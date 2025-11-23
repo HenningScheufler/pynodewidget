@@ -7,6 +7,9 @@ wheels/
 *.egg-info
 bun.lock
 uv.lock
+.coverage
+coverage.xml
+coverage_html
 # Virtual environments
 .venv
 

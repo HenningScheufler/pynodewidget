@@ -59,8 +59,9 @@ path = "hatch_build.py"
 docs-serve = "mkdocs serve"
 docs-build = "mkdocs build"
 test-py = "pytest"
-test-js = "bun --cwd=js  run test"
+test-js = "bun --cwd=js run test"
 test-py-cov = "pytest --cov=pynodewidget --cov-report=xml:coverage.xml --cov-report=html:coverage_html"
+test-js-cov = "bun --cwd=js run test:coverage"
 test = "task test-py && task test-js"
 
 
