@@ -27,19 +27,20 @@ PyNodeWidget is a hybrid Python-JavaScript library that renders interactive node
 
 ```mermaid
 graph LR
-    A[Python: JsonSchemaNodeWidget] -->|JSON Schema| B[AnyWidget Bridge]
-    B -->|Sync State| C[React: JsonSchemaNode]
-    C -->|Render| D[ReactFlow Canvas]
-    D -->|User Events| C
-    C -->|Update Model| B
+    A[Python: NodeBuilder] -->|JSON Schema| B[AnyWidget Bridge]
+    B -->|Sync Templates| C[NodeComponentBuilder]
+    C -->|Generate| D[React Components]
+    D -->|Render| E[ReactFlow Canvas]
+    E -->|User Events| D
+    D -->|Update Model| B
     B -->|Trigger Observers| A
 ```
 
 **Key Components:**
 
-- **Python Layer**: `JsonSchemaNodeWidget`, `NodeBuilder`, `ObservableDict`
+- **Python Layer**: `NodeBuilder`, `ObservableDict`
 - **AnyWidget Bridge**: Bidirectional state synchronization
-- **React Layer**: `JsonSchemaNode`, `NodePanel`, field components
+- **React Layer**: `NodeComponentBuilder`, `NodePanel`, field components
 - **ReactFlow**: Canvas rendering, drag-and-drop, connections
 
 ---
@@ -119,7 +120,7 @@ The **User Guide** is pure Python—no JavaScript knowledge required. The **Deve
 ```
 js/
 ├── src/                  # Main source code
-│   ├── JsonSchemaNode.tsx       # Root widget component
+    │   ├── NodeComponentBuilder.tsx # Node component generator
 │   ├── NodePanel.tsx            # Node editor panel
 │   ├── components/              # React components
 │   │   ├── fields/              # Field type components

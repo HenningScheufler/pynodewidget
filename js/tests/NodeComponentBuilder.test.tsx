@@ -4,12 +4,19 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { nodeFactory } from '../src/components/NodeFactory';
-import { JsonSchemaNode } from '../src/JsonSchemaNode';
+import { NodeComponentBuilder } from '../src/utils/NodeComponentBuilder';
 import { SetNodeValuesContext } from '../src/index';
 import type { NodeProps } from '@xyflow/react';
+import type { CustomNodeData } from '../src/types/schema';
 
 beforeAll(() => {
-  nodeFactory.register('jsonschema', JsonSchemaNode);
+  // Register a default test node component
+  const testSchema: CustomNodeData = {
+    label: 'Test',
+    layoutType: 'horizontal',
+  };
+  const component = NodeComponentBuilder.buildComponent(testSchema);
+  nodeFactory.register('jsonschema', component);
 });
 
 // Wrapper component that provides the required context
@@ -26,8 +33,9 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 
 // Helper to render a node by type using the factory
 const renderWithReactFlow = (props: NodeProps) => {
-  const NodeComponent = nodeFactory.get(props.type);
-  if (!NodeComponent) throw new Error(`Node type not registered: ${props.type}`);
+  // Build component from data for each test
+  const data = props.data as CustomNodeData;
+  const NodeComponent = NodeComponentBuilder.buildComponent(data);
   return render(<TestWrapper><NodeComponent {...props} /></TestWrapper>);
 };
 
@@ -46,7 +54,7 @@ const createMockNodeProps = (data: any, selected = false): NodeProps => ({
   draggable: true,
 });
 
-describe('JsonSchemaNode', () => {
+describe('NodeComponentBuilder', () => {
   describe('Node Rendering', () => {
     it('renders node with label', () => {
       const mockData = { label: 'Test Node' };
