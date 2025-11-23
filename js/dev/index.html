@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyNodeFlow Dev - Node Editor & Component Preview</title>
+    <style>
+        /* ====================================================================
+           BASE STYLES
+           ==================================================================== */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+        }
+
+        /* ====================================================================
+           HEADER
+           ==================================================================== */
+        .header {
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1000;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            color: #333;
+        }
+
+        .subtitle {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* ====================================================================
+           TABS
+           ==================================================================== */
+        .tabs {
+            display: flex !important;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            position: relative;
+            z-index: 1000 !important;
+            background: #f5f5f5;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: white !important;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            border-radius: 4px 4px 0 0;
+            position: relative;
+            z-index: 1001 !important;
+        }
+
+        .tab:hover {
+            background: #f0f0f0;
+        }
+
+        .tab.active {
+            background: white;
+            border-bottom: 2px solid white;
+            margin-bottom: -2px;
+            font-weight: 600;
+        }
+
+        /* ====================================================================
+           VIEW CONTAINERS
+           ==================================================================== */
+        .view-container {
+            display: none;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .view-container.active {
+            display: block;
+        }
+
+        /* ====================================================================
+           EDITOR VIEW
+           ==================================================================== */
+        #editor-view {
+            width: 100%;
+            height: 600px;
+        }
+
+        /* ====================================================================
+           SINGLE NODE VIEW
+           ==================================================================== */
+        #single-node-view {
+            padding: 40px;
+        }
+
+        .view-header {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+        }
+
+        .info-banner {
+            padding: 15px;
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .info-banner h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #0d47a1;
+        }
+
+        .info-banner p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #1565c0;
+        }
+
+        /* Controls section */
+        .controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .control-group select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        /* Node showcase */
+        .node-showcase {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .node-wrapper {
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .node-wrapper:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .node-label {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .node-container {
+            width: 350px;
+            height: 400px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- ====================================================================
+         HEADER
+         ==================================================================== -->
+    <div class="header">
+        <h1>PyNodeFlow Development</h1>
+        <p class="subtitle">
+            Interactive development environment for node editor and components
+        </p>
+    </div>
+
+    <!-- ====================================================================
+         TAB NAVIGATION
+         ==================================================================== -->
+    <div class="tabs" style="display: flex !important; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; position: relative; z-index: 10000 !important; background: #f5f5f5;">
+        <button class="tab active" onclick="switchTab('editor', this)" style="display: inline-block !important; padding: 10px 20px; background: white !important; border: 1px solid #ddd; border-bottom: none; cursor: pointer; font-size: 14px; border-radius: 4px 4px 0 0; position: relative; z-index: 10001 !important;">
+            🎨 Node Editor
+        </button>
+        <button class="tab" onclick="switchTab('single', this)" style="display: inline-block !important; padding: 10px 20px; background: white !important; border: 1px solid #ddd; border-bottom: none; cursor: pointer; font-size: 14px; border-radius: 4px 4px 0 0; position: relative; z-index: 10001 !important;">
+            🔲 Component Preview
+        </button>
+    </div>
+
+    <!-- ====================================================================
+         FULL NODE EDITOR VIEW
+         ==================================================================== -->
+    <div id="editor-view" class="view-container active"></div>
+
+    <!-- ====================================================================
+         SINGLE NODE COMPONENT VIEW
+         ==================================================================== -->
+    <div id="single-node-view" class="view-container">
+        <div class="view-header">
+            <div class="info-banner">
+                <h3>📦 Component Preview Mode</h3>
+                <p><strong>Purpose:</strong> View and test individual node components in isolation</p>
+                <p><strong>Use cases:</strong> Test different layouts, verify styling, debug component behavior</p>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="layout-filter">Layout:</label>
+                    <select id="layout-filter" onchange="filterNodes()">
+                        <option value="all">All Layouts</option>
+                        <option value="horizontal">Horizontal Only</option>
+                        <option value="vertical">Vertical Only</option>
+                        <option value="compact">Compact Only</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="handle-filter">Handle Type:</label>
+                    <select id="handle-filter" onchange="filterNodes()">
+                        <option value="all">All Handles</option>
+                        <option value="base">Base Only</option>
+                        <option value="button">Button Only</option>
+                        <option value="labeled">Labeled Only</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <div class="checkbox-wrapper">
+                        <input 
+                            type="checkbox" 
+                            id="show-selected" 
+                            onchange="toggleSelected()"
+                        >
+                        <label for="show-selected">Show selected state</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="node-showcase" id="node-showcase"></div>
+    </div>
+    
+    <script type="module">
+        // ====================================================================
+        // IMPORTS
+        // ====================================================================
+        import { createRoot } from 'react-dom/client';
+        import { createElement } from 'react';
+        import { JsonSchemaNode } from '../src/JsonSchemaNode.tsx';
+        import { ReactFlow, ReactFlowProvider, Background, Controls } from '@xyflow/react';
+
+        // ====================================================================
+        // TAB SWITCHING
+        // ====================================================================
+        window.switchTab = function(tab, clickedTab) {
+            const tabs = document.querySelectorAll('.tab');
+            const views = document.querySelectorAll('.view-container');
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            views.forEach(v => v.classList.remove('active'));
+            
+            // Activate the clicked tab
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+            }
+            
+            // Map tab names to view IDs
+            const viewId = tab === 'single' ? 'single-node-view' : `${tab}-view`;
+            const view = document.getElementById(viewId);
+            if (view) {
+                view.classList.add('active');
+            }
+        };
+
+        // ====================================================================
+        // SAMPLE NODE DATA DEFINITIONS
+        // ====================================================================
+        const sampleNodeData = {
+            label: 'Data Processor',
+            parameters: {
+                type: 'object',
+                properties: {
+                    name: { 
+                        type: 'string', 
+                        title: 'Name', 
+                        default: 'processor' 
+                    },
+                    count: { 
+                        type: 'number', 
+                        title: 'Count', 
+                        default: 10 
+                    },
+                    enabled: { 
+                        type: 'boolean', 
+                        title: 'Enabled', 
+                        default: true 
+                    }
+                },
+                required: ['name']
+            },
+            inputs: [
+                { id: 'input1', label: 'First Input' },
+                { id: 'input2', label: 'Second Input' }
+            ],
+            outputs: [
+                { id: 'output1', label: 'Result' },
+                { id: 'output2', label: 'Stats' }
+            ],
+            values: {
+                name: 'processor',
+                count: 10,
+                enabled: true
+            }
+        };
+
+        // ====================================================================
+        // LAYOUT AND HANDLE CONFIGURATIONS
+        // ====================================================================
+        const layouts = [
+            { type: 'horizontal', label: 'Horizontal Layout' },
+            { type: 'vertical', label: 'Vertical Layout' },
+            { type: 'compact', label: 'Compact Layout' }
+        ];
+
+        const handleTypes = [
+            { type: 'base', label: 'Base Handle' },
+            { type: 'button', label: 'Button Handle' },
+            { type: 'labeled', label: 'Labeled Handle' }
+        ];
+
+        // ====================================================================
+        // MOCK MODEL FOR FULL EDITOR
+        // ====================================================================
+        const mockModel = {
+            data: {
+                nodes: [],
+                edges: [],
+                node_templates: [
+                    {
+                        type: 'my_node',
+                        label: 'My Node',
+                        icon: '⚙️',
+                        description: 'Sample node with parameters',
+                        defaultData: sampleNodeData
+                    }
+                ],
+                fit_view: true,
+                height: "600px"
+            },
+            callbacks: {},
+            get(key) { 
+                return this.data[key]; 
+            },
+            set(key, value) {
+                this.data[key] = value;
+                const changeEvent = `change:${key}`;
+                if (this.callbacks[changeEvent]) {
+                    this.callbacks[changeEvent].forEach(callback => callback());
+                }
+            },
+            on(event, callback) {
+                if (!this.callbacks) this.callbacks = {};
+                if (!this.callbacks[event]) this.callbacks[event] = [];
+                this.callbacks[event].push(callback);
+            },
+            off(event, callback) {
+                if (this.callbacks && this.callbacks[event]) {
+                    this.callbacks[event] = this.callbacks[event].filter(cb => cb !== callback);
+                }
+            },
+            save_changes() {}
+        };
+
+        // ====================================================================
+        // RENDER FULL EDITOR
+        // ====================================================================
+        try {
+            const { render } = await import('../src/index.tsx');
+            const editorEl = document.getElementById('editor-view');
+            render({ model: mockModel, el: editorEl });
+        } catch (error) {
+            console.error('Error rendering editor:', error);
+            document.getElementById('editor-view').innerHTML = 
+                `<pre style="color: red; padding: 20px;">Error: ${error.message}\n${error.stack}</pre>`;
+        }
+
+        // ====================================================================
+        // STATE MANAGEMENT FOR SINGLE NODE VIEW
+        // ====================================================================
+        let nodeRoots = [];
+        let selectedState = false;
+
+        // ====================================================================
+        // RENDER SINGLE NODES
+        // ====================================================================
+        function renderNodes(layoutFilter = 'all', handleFilter = 'all') {
+            const showcase = document.getElementById('node-showcase');
+            showcase.innerHTML = '';
+            nodeRoots = [];
+
+            // Generate all combinations of layouts and handle types
+            const combinations = [];
+            
+            const filteredLayouts = layoutFilter === 'all' ? layouts : layouts.filter(l => l.type === layoutFilter);
+            const filteredHandles = handleFilter === 'all' ? handleTypes : handleTypes.filter(h => h.type === handleFilter);
+            
+            filteredLayouts.forEach(layout => {
+                filteredHandles.forEach(handle => {
+                    combinations.push({
+                        layout,
+                        handle,
+                        label: `${layout.label} + ${handle.label}`
+                    });
+                });
+            });
+
+            if (combinations.length === 0) {
+                showcase.innerHTML = `
+                    <div class="empty-state">
+                        <div>No combinations match the filters</div>
+                    </div>
+                `;
+                return;
+            }
+
+            combinations.forEach(combo => {
+                // Create wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'node-wrapper';
+                wrapper.dataset.layout = combo.layout.type;
+                wrapper.dataset.handle = combo.handle.type;
+                
+                // Add label
+                const label = document.createElement('div');
+                label.className = 'node-label';
+                label.textContent = combo.label;
+                wrapper.appendChild(label);
+                
+                // Add container
+                const container = document.createElement('div');
+                container.className = 'node-container';
+                wrapper.appendChild(container);
+                
+                showcase.appendChild(wrapper);
+                
+                // Render node with specific layout and handle type
+                const root = createRoot(container);
+                const nodeData = {
+                    ...sampleNodeData,
+                    layoutType: combo.layout.type,
+                    handleType: combo.handle.type
+                };
+                
+                const nodeId = `node-${combo.layout.type}-${combo.handle.type}`;
+                
+                root.render(
+                    createElement(ReactFlowProvider, null,
+                        createElement(ReactFlow, {
+                            nodes: [{
+                                id: nodeId,
+                                type: 'jsonschema',
+                                position: { x: 0, y: 0 },
+                                data: nodeData
+                            }],
+                            edges: [],
+                            nodeTypes: { jsonschema: JsonSchemaNode },
+                            fitView: true,
+                            nodesDraggable: false,
+                            nodesConnectable: true,
+                            elementsSelectable: selectedState,
+                            panOnDrag: false,
+                            zoomOnScroll: false,
+                            zoomOnPinch: false,
+                            zoomOnDoubleClick: false,
+                            preventScrolling: false,
+                            style: { background: '#fafafa' }
+                        })
+                    )
+                );
+
+                nodeRoots.push({ root, layout: combo.layout.type, handle: combo.handle.type, container });
+            });
+        }
+
+        // ====================================================================
+        // FILTER CONTROLS
+        // ====================================================================
+        window.filterNodes = function() {
+            const layoutFilter = document.getElementById('layout-filter').value;
+            const handleFilter = document.getElementById('handle-filter').value;
+            renderNodes(layoutFilter, handleFilter);
+        };
+
+        window.toggleSelected = function() {
+            selectedState = document.getElementById('show-selected').checked;
+            const layoutFilter = document.getElementById('layout-filter').value;
+            const handleFilter = document.getElementById('handle-filter').value;
+            renderNodes(layoutFilter, handleFilter);
+        };
+
+        // ====================================================================
+        // INITIAL RENDER
+        // ====================================================================
+        renderNodes();
+
+        // Import style.css AFTER everything else to avoid conflicts
+        import('../src/style.css');
+    </script>
+</body>
+</html>
