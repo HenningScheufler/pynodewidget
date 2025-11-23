@@ -17,7 +17,7 @@ class BunBuildHook(BuildHookInterface):
         root = Path(self.root)
         js_dir = root / "js"
         dist_dir = js_dir / "dist"
-        static_dir = root / "src" / "pynodeflow" / "static"
+        static_dir = root / "src" / "pynodewidget" / "static"
 
         # Check if bun is available
         if not shutil.which("bun"):
@@ -45,9 +45,14 @@ class BunBuildHook(BuildHookInterface):
         # Create static directory if it doesn't exist
         static_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy built assets
+        # Copy built assets (all JS and CSS files to handle code splitting)
         print("Copying built assets to package...")
-        shutil.copy2(dist_dir / "index.js", static_dir / "index.js")
-        shutil.copy2(dist_dir / "index.css", static_dir / "style.css")
+        for file in dist_dir.glob("*.js"):
+            shutil.copy2(file, static_dir / file.name)
+            print(f"  Copied {file.name}")
+        
+        for file in dist_dir.glob("*.css"):
+            shutil.copy2(file, static_dir / file.name)
+            print(f"  Copied {file.name}")
 
         print("JavaScript build complete!")

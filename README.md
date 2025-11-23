@@ -1,11 +1,11 @@
-# PyNodeFlow
+# PyNodeWidget
 
 A Python wrapper for ReactFlow using AnyWidget - build interactive node graphs without JavaScript.
 
 ## Quick Start
 
 ```python
-from pynodeflow import NodeFlowWidget
+from pynodewidget import NodeFlowWidget
 
 # Create a simple flow
 widget = NodeFlowWidget()
@@ -30,6 +30,7 @@ Requires:
 ```bash
 # Install dependencies
 uv sync
+uv pip install -e ".[dev,docs]"
 
 # Build JavaScript assets
 cd js && bun install && bun run build
@@ -38,9 +39,24 @@ cd js && bun install && bun run build
 uv build
 ```
 
+### Documentation
+
+```bash
+# Serve documentation locally with live reload
+task docs-serve
+
+# Build static documentation
+task docs-build
+
+# Deploy to GitHub Pages
+task docs-deploy
+```
+
+See full documentation at the project's GitHub Pages or run locally.
+
 ## Project Structure
 
-- `src/pynodeflow/` - Python package
+- `src/pynodewidget/` - Python package
 - `js/` - ReactFlow TypeScript/React code
 - `js/dist/` - Built JavaScript bundle
-- `src/pynodeflow/static/` - Bundled assets included in package
+- `src/pynodewidget/static/` - Bundled assets included in package

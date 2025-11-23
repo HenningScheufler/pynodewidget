@@ -1,1 +1,2 @@
-console.log("Hello via Bun!");
+// Anywidget entry point export
+export { default } from "./src/anywidget/JsonSchemaNodeWidget";

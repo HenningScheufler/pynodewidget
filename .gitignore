@@ -5,9 +5,13 @@ build/
 dist/
 wheels/
 *.egg-info
-
+bun.lock
+uv.lock
 # Virtual environments
 .venv
+
+#docs
+site/
 
 # Node.js / Bun
 node_modules/
