@@ -74,6 +74,8 @@ export function FlowCanvas({
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
+        minZoom={0.1}
+        maxZoom={2}
       >
         <Background />
         <Controls />
