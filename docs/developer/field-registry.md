@@ -20,14 +20,7 @@ fieldRegistry.register("color", ({ value, onChange }) => (
 
 ```python
 from pydantic import BaseModel, Field
-from pynodewidget import JsonSchemaNodeWidget
 
-class ColorParams(BaseModel):
-    bg: str = Field(default="#ff0000", json_schema_extra={"type": "color"})
-
-class ColorNode(JsonSchemaNodeWidget):
-    label = "Color Node"
-    parameters = ColorParams
 ```
 
 ---
@@ -232,19 +225,7 @@ See [`examples/custom_fields_example.py`](../../examples/custom_fields_example.p
 
 ```python
 from pydantic import BaseModel, Field
-from pynodewidget import JsonSchemaNodeWidget, NodeFlowWidget
 
-class StyledBoxParams(BaseModel):
-    background: str = Field(default="#3498db", json_schema_extra={"type": "color"})
-    border: str = Field(default="#ffffff", json_schema_extra={"type": "color"})
-    opacity: int = Field(default=100, json_schema_extra={"type": "slider"})
-
-class StyledBoxNode(JsonSchemaNodeWidget):
-    label = "Styled Box"
-    parameters = StyledBoxParams
-    icon = "🎨"
-
-widget = NodeFlowWidget(nodes=[StyledBoxNode])
 ```
 
 **JavaScript:**

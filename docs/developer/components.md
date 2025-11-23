@@ -33,6 +33,33 @@ const nodeTypes = nodeFactory.getAll();
 
 ---
 
+## NodeComponentBuilder
+
+Builds optimized React components from schema.
+
+```typescript
+import { NodeComponentBuilder } from 'pynodewidget';
+
+// Build component from schema
+const schema = {
+  label: "Processor",
+  layoutType: "horizontal",
+  handleType: "button",
+  header: { show: true, icon: "⚙️" }
+};
+
+const component = NodeComponentBuilder.buildComponent(schema);
+nodeFactory.register("processor", component);
+```
+
+**Features:**
+- Pre-computes static configuration at build time
+- Resolves layout/handle components once
+- Returns memoized components for performance
+- Validates schema structure with clear errors
+
+---
+
 ## NodePanel
 
 Sidebar with draggable node types.
@@ -100,9 +127,10 @@ Renders field inputs from JSON schema.
 import { NodeForm } from 'pynodewidget';
 
 <NodeForm
-  schema={node.data.parameters}
+  nodeId={node.id}
+  parameters={node.data.parameters}
   values={values}
-  onChange={(field, value) => updateValue(node.id, field, value)}
+  onValueChange={(field, value) => updateValue(node.id, field, value)}
 />
 ```
 

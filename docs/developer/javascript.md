@@ -57,7 +57,6 @@ Outputs to `js/dist/`:
 js/
 ├── src/
 │   ├── index.tsx                    # AnyWidget entry point
-│   ├── JsonSchemaNode.tsx           # Universal node component
 │   ├── NodePanel.tsx                # Node sidebar
 │   ├── json_schema_node_entry.ts    # Standalone node entry
 │   ├── components/
@@ -97,13 +96,14 @@ js/
 │   │   ├── fieldRenderer.ts         # Field type definitions
 │   │   └── schema.ts                # JSON Schema types
 │   └── utils/
-│       └── nodeBuilder.ts           # Node creation helpers
+│       ├── nodeBuilder.ts           # Data utilities
+│       └── NodeComponentBuilder.tsx # Component generator
 ├── dev/
 │   ├── DevApp.tsx                   # Development app
 │   ├── mockModel.ts                 # Mock AnyWidget model
 │   └── components/                  # Dev UI components
 ├── tests/
-│   ├── JsonSchemaNode.test.tsx      # Component tests
+│   ├── NodeComponentBuilder.test.tsx # Component tests
 │   ├── NodeFactory.test.tsx
 │   └── utils.test.ts
 ├── package.json
@@ -232,9 +232,7 @@ interface CustomNodeData {
   outputs?: HandleConfig[];
 }
 
-export function JsonSchemaNode({ id, data }: { id: string; data: CustomNodeData }) {
-  // TypeScript ensures data has required fields
-}
+
 ```
 
 ### Tailwind CSS
@@ -673,9 +671,7 @@ bun run dev
 Memoize expensive components:
 
 ```typescript
-export const JsonSchemaNode = React.memo(({ id, data, selected }: Props) => {
-  // Only re-renders when props change
-});
+
 ```
 
 ### useMemo and useCallback
@@ -687,37 +683,3 @@ const expensiveValue = useMemo(() => {
 
 const handleClick = useCallback(() => {
   doSomething(id);
-}, [id]);
-```
-
-### Virtualization
-
-For large lists, use virtualization:
-
-```typescript
-import { useVirtualizer } from '@tanstack/react-virtual';
-
-export function LargeList({ items }: { items: any[] }) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  
-  const virtualizer = useVirtualizer({
-    count: items.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 50
-  });
-  
-  return (
-    <div ref={parentRef} style={{ height: '400px', overflow: 'auto' }}>
-      {virtualizer.getVirtualItems().map((virtualItem) => (
-        <div key={virtualItem.key}>{items[virtualItem.index]}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-## Next Steps
-
-- **[Architecture](architecture.md)**: Understand Python-JavaScript communication
-- **[API Reference](../api/javascript/index.md)**: JavaScript API documentation
-- **[Testing](testing.md)**: Testing both Python and JavaScript

@@ -9,7 +9,7 @@ PyNodeWidget is a hybrid application with two main components:
 ```mermaid
 graph TB
     subgraph Python["Python (Backend)"]
-        A[Pydantic Models] --> B[JsonSchemaNodeWidget]
+        A[Pydantic Models] --> B[NodeBuilder]
         B --> C[NodeFlowWidget]
         C --> D[Traitlets]
         D --> E[AnyWidget Comm Layer]
@@ -18,7 +18,7 @@ graph TB
     subgraph JavaScript["JavaScript (Frontend)"]
         E --> F[React Component]
         F --> G[ReactFlow Canvas]
-        G --> H[JsonSchemaNode]
+        G --> H[NodeComponentBuilder]
         H --> I[Field Renderers]
         H --> J[Layouts]
     end
@@ -189,12 +189,13 @@ sequenceDiagram
 
     User->>Widget: register_node_type(MyNode)
     Widget->>Metadata: from_node_class(MyNode)
-    Metadata->>Metadata: Validate protocol implementation
     Metadata->>Metadata: Extract JSON Schema from Pydantic
     Metadata->>Widget: Return metadata dict
     Widget->>Python: Append to node_templates trait
     Python->>JS: Sync node_templates
-    JS->>JS: Register in NodeFactory
+    JS->>Builder: NodeComponentBuilder.buildComponent(schema)
+    Builder->>JS: Return memoized component
+    JS->>Factory: Register component in NodeFactory
     JS->>JS: Add to sidebar
 ```
 
@@ -209,7 +210,7 @@ ReactFlowProvider
         ├── FieldRegistryProvider
         ├── NodeSidebar
         ├── FlowCanvas
-        │     └── JsonSchemaNode (for each node)
+        │     └── NodeComponentBuilder (for each node)
         │           ├── NodeForm
         │           │     └── FieldFactory
         │           │           └── Field Components
