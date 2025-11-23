@@ -22,6 +22,7 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
     "taskipy>=1.13.0",
     "hatchling>=1.27.0",
 ]
@@ -59,5 +60,27 @@ docs-serve = "mkdocs serve"
 docs-build = "mkdocs build"
 test-py = "pytest"
 test-js = "bun --cwd=js  run test"
+test-py-cov = "pytest --cov=pynodewidget --cov-report=xml:coverage.xml --cov-report=html:coverage_html"
 test = "task test-py && task test-js"
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers -q"
+
+[tool.coverage.run]
+omit = [
+    "tests/*",
+    "docs/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == '__main__':",
+]
+
+[tool.coverage.html]
+directory = "coverage_html"
 
