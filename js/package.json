@@ -1,0 +1,23 @@
+{
+  "name": "pynodeflow-js",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun build src/index.tsx --outdir dist --format esm --minify",
+    "watch": "bun build src/index.tsx --outdir dist --format esm --watch"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
