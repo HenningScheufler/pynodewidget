@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-python:
-    name: Test Python
+  test:
+    name: Test Python & JavaScript
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -29,29 +29,21 @@ jobs:
         with:
           version: "latest"
       
-      - name: Install dependencies
-        run: uv run pip install -e .[all]
-      
-      - name: Run Python tests
-        run: uv run task test-py
-
-  test-javascript:
-    name: Test JavaScript
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       
-      - name: Install JavaScript dependencies
+      - name: Build JavaScript assets
         working-directory: ./js
-        run: bun install
+        run: |
+          bun install
+      
+      - name: Install Python dependencies
+        run: uv run pip install -e .[all]
       
       - name: Run JavaScript tests
-        working-directory: ./js
-        run: bun run test
+        run: uv run task test-js
+      
+      - name: Run Python tests
+        run: uv run task test-py
