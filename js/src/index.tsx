@@ -58,7 +58,6 @@ export { getHandle, registerHandle, getAvailableHandles } from "./components/han
 export type { HandleType } from "./components/handles/HandleFactory";
 
 // Export node builder utilities
-export * from "./utils/nodeBuilder";
 export { NodeComponentBuilder, buildNodeTypes } from "./utils/NodeComponentBuilder";
 
 // Export core types
