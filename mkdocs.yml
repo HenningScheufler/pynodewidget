@@ -1,0 +1,134 @@
+site_name: PyNodeWidget Documentation
+site_description: Build interactive node-based UIs in Jupyter without JavaScript
+site_author: Henning
+repo_url: https://github.com/HenningScheufler/pynodewidget
+repo_name: pynodewidget
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            merge_init_into_class: true
+            members_order: source
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/HenningScheufler/pynodewidget
+  version:
+    provider: mike
+
+nav:
+  - Home: index.md
+
+  
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Core Concepts: getting-started/concepts.md
+  
+  - User Guide:
+    - Overview: guides/index.md
+    - Creating Custom Nodes: guides/custom-nodes.md
+    - Styling Nodes: guides/styling.md
+    - Conditional Fields: guides/conditional-fields.md
+    - Handle Types: guides/handles.md
+    - Working with Values: guides/values.md
+    - Import/Export Workflows: guides/import-export.md
+  
+  - Python API Reference:
+    - Overview: api/python/index.md
+    - NodeFlowWidget: api/python/widget.md
+    - JsonSchemaNodeWidget: api/python/json-schema-node.md
+    - Node Builder Utilities: api/python/node-builder.md
+    - ObservableDict: api/python/observable-dict.md
+    - Protocols: api/python/protocols.md
+  
+  - Developer Guide:
+    - Overview: developer/index.md
+    - Architecture: developer/architecture.md
+    - JavaScript Development: developer/javascript.md
+    - Field Registry API: developer/field-registry.md
+    - Layout System API: developer/layouts.md
+    - Handle System API: developer/handles.md
+    - Hooks API: developer/hooks.md
+    - Component Library: developer/components.md
+    - State Management: developer/state.md
+    - TypeScript Types: developer/types.md
+  
+  - Examples:
+    - Overview: examples/index.md
+
+  - Roadmap: ROADMAP.md
+  
+  - Contributing:
+    - Development Setup: contributing/development.md
+    - Building from Source: contributing/building.md
+    - Running Tests: contributing/testing.md
+    - Code Style Guide: contributing/code-style.md
