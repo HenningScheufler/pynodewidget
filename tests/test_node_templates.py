@@ -1,0 +1,158 @@
+"""Tests for node template creation and management."""
+
+import pytest
+from pynodewidget import NodeFlowWidget
+
+
+def test_add_node_type_from_schema():
+    """Test adding node type from JSON schema."""
+    widget = NodeFlowWidget()
+    
+    schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "title": "Name", "default": "test"},
+            "count": {"type": "number", "title": "Count", "default": 10},
+            "enabled": {"type": "boolean", "title": "Enabled", "default": True}
+        },
+        "required": ["name"]
+    }
+    
+    widget.add_node_type_from_schema(
+        json_schema=schema,
+        type_name="test_node",
+        label="Test Node",
+        description="A test node",
+        icon="🧪",
+        inputs=[{"id": "in1", "label": "Input 1"}],
+        outputs=[{"id": "out1", "label": "Output 1"}]
+    )
+    
+    assert len(widget.node_templates) == 1
+    template = widget.node_templates[0]
+    assert template["type"] == "test_node"
+    assert template["label"] == "Test Node"
+    assert template["description"] == "A test node"
+    assert template["icon"] == "🧪"
+    assert template["defaultData"]["parameters"] == schema
+    assert len(template["defaultData"]["inputs"]) == 1
+    assert len(template["defaultData"]["outputs"]) == 1
+
+
+def test_add_node_type_default_values():
+    """Test that default values from schema are extracted."""
+    widget = NodeFlowWidget()
+    
+    schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "default": "processor"},
+            "count": {"type": "number", "default": 42}
+        }
+    }
+    
+    widget.add_node_type_from_schema(
+        json_schema=schema,
+        type_name="processor",
+        label="Processor"
+    )
+    
+    template = widget.node_templates[0]
+    values = template["defaultData"]["values"]
+    assert values["name"] == "processor"
+    assert values["count"] == 42
+
+
+def test_add_node_type_without_handles():
+    """Test adding node type without explicit inputs/outputs."""
+    widget = NodeFlowWidget()
+    
+    widget.add_node_type_from_schema(
+        json_schema={"type": "object", "properties": {}},
+        type_name="simple",
+        label="Simple Node"
+    )
+    
+    template = widget.node_templates[0]
+    assert template["defaultData"]["inputs"] == []
+    assert template["defaultData"]["outputs"] == []
+
+
+def test_multiple_node_types():
+    """Test adding multiple node types."""
+    widget = NodeFlowWidget()
+    
+    widget.add_node_type_from_schema(
+        json_schema={"type": "object"},
+        type_name="type1",
+        label="Type 1"
+    )
+    
+    widget.add_node_type_from_schema(
+        json_schema={"type": "object"},
+        type_name="type2",
+        label="Type 2"
+    )
+    
+    assert len(widget.node_templates) == 2
+    assert widget.node_templates[0]["type"] == "type1"
+    assert widget.node_templates[1]["type"] == "type2"
+
+
+def test_method_chaining():
+    """Test that methods support chaining."""
+    widget = NodeFlowWidget()
+    
+    result = widget.add_node_type_from_schema(
+        json_schema={"type": "object"},
+        type_name="test1",
+        label="Test 1"
+    ).add_node_type_from_schema(
+        json_schema={"type": "object"},
+        type_name="test2",
+        label="Test 2"
+    )
+    
+    assert result is widget
+    assert len(widget.node_templates) == 2
+
+
+def test_add_node_type_from_pydantic():
+    """Test adding node type from Pydantic model."""
+    pytest.importorskip("pydantic")
+    from pydantic import BaseModel, Field
+    
+    class TestModel(BaseModel):
+        name: str = Field(default="test", description="Name field")
+        count: int = Field(default=5, ge=0, le=100)
+        enabled: bool = True
+    
+    widget = NodeFlowWidget()
+    widget.add_node_type_from_pydantic(
+        model_class=TestModel,
+        type_name="pydantic_node",
+        label="Pydantic Node",
+        icon="🐍"
+    )
+    
+    assert len(widget.node_templates) == 1
+    template = widget.node_templates[0]
+    assert template["type"] == "pydantic_node"
+    assert template["icon"] == "🐍"
+    assert "properties" in template["defaultData"]["parameters"]
+
+
+def test_add_node_type_from_pydantic_without_pydantic():
+    """Test that proper error is raised when Pydantic is not available."""
+    widget = NodeFlowWidget()
+    
+    # Mock a non-Pydantic class
+    class NotPydantic:
+        pass
+    
+    with pytest.raises(ValueError, match="must be a Pydantic BaseModel"):
+        widget.add_node_type_from_pydantic(
+            model_class=NotPydantic,
+            type_name="invalid",
+            label="Invalid"
+        )
