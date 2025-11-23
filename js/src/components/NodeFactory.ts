@@ -7,19 +7,19 @@ export type NodeComponent = ComponentType<NodeProps>;
 
 /**
  * NodeRenderer defines how a node type should be rendered.
- * - 'parameters': Use JsonSchemaNode component (default for Python-defined nodes)
+ * - 'parameters': Use builder-generated component (default for Python-defined nodes)
  * - 'custom': Use a custom React component that doesn't follow the parameters pattern
  * - ComponentType: Direct component reference for maximum control
  */
 export type NodeRenderer = 
-  | 'parameters'       // Auto-render using JsonSchemaNode based on data.parameters
+  | 'parameters'       // Auto-render using NodeComponentBuilder based on data.parameters
   | 'custom'           // Use registered custom component
   | NodeComponent;     // Direct component reference
 
 export interface NodeTypeRegistration {
   /** The React component to render this node type */
   component: NodeComponent;
-  /** Indicates if this is a parameters-based node (uses JsonSchemaNode) or custom */
+  /** Indicates if this is a parameters-based node (uses builder-generated component) or custom */
   isParametersNode: boolean;
   /** Optional: Custom props to pass to the component */
   defaultProps?: Record<string, any>;
@@ -70,7 +70,7 @@ class NodeFactory {
 
   /**
    * Set the fallback component for unregistered types
-   * Typically set to JsonSchemaNode for parameters-based rendering
+   * Typically set to a builder-generated component for parameters-based rendering
    */
   setFallback(component: NodeComponent) {
     this.fallbackComponent = component;

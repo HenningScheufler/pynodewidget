@@ -9,7 +9,7 @@ import {
 import type { Node, Edge, NodeChange, EdgeChange, Connection, NodeTypes } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./style.css";
-import { JsonSchemaNode } from "./JsonSchemaNode";
+import { NodeComponentBuilder, buildNodeTypes } from "./utils/NodeComponentBuilder";
 import { nodeFactory } from "./components/NodeFactory";
 import { NodeSidebar } from "./NodeSidebar";
 import type { NodeTemplate } from "./types/schema";
@@ -59,6 +59,7 @@ export type { HandleType } from "./components/handles/HandleFactory";
 
 // Export node builder utilities
 export * from "./utils/nodeBuilder";
+export { NodeComponentBuilder, buildNodeTypes } from "./utils/NodeComponentBuilder";
 
 // Export core types
 export type { 
@@ -121,14 +122,16 @@ function NodeFlowComponent() {
     [setEdges]
   );
 
-  // Register JsonSchemaNode as fallback for all parameters-based nodes
+  // Build and register node components from templates
   React.useEffect(() => {
-    // Set JsonSchemaNode as the fallback for unregistered types
-    nodeFactory.setFallback(JsonSchemaNode);
-    
-    // Register all Python-defined node templates as parameters nodes
+    // Build components from templates and register them
     nodeTemplates.forEach((template) => {
-      nodeFactory.registerParameters(template.type, JsonSchemaNode);
+      try {
+        const component = NodeComponentBuilder.buildComponent(template.defaultData);
+        nodeFactory.register(template.type, component);
+      } catch (error) {
+        console.error(`Failed to register node type "${template.type}":`, error);
+      }
     });
   }, [nodeTemplates]);
 
