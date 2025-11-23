@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Python & JavaScript
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      - name: Build JavaScript assets
+        working-directory: ./js
+        run: |
+          bun install
+      
+      - name: Install Python dependencies
+        run: uv run pip install -e .[all]
+      
+      - name: Run JavaScript tests
+        run: uv run task test-js
+      
+      - name: Run Python tests
+        run: uv run task test-py

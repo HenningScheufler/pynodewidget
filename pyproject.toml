@@ -10,7 +10,7 @@ dependencies = [
     "traitlets>=5.14.0",
 ]
 authors = [
-    { name = "Henning", email = "" }
+    { name = "Henning", email = "henning.scheufler@web.de" }
 ]
 keywords = ["jupyter", "widget", "reactflow", "nodes", "graph"]
 classifiers = [
@@ -22,14 +22,21 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "jupyter>=1.0.0",
     "taskipy>=1.13.0",
+    "hatchling>=1.27.0",
 ]
 docs = [
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.25.0",
     "pymdown-extensions>=10.8.0",
+]
+notebooks = [
+    "jupyterlab>=4.5.0",
+    "marimo>=0.18.0",
+]
+all = [
+    "pynodewidget[dev,docs,notebooks]",
 ]
 
 [build-system]
@@ -46,12 +53,6 @@ path = "hatch_build.py"
 [tool.hatch.build.targets.sdist.hooks.custom]
 path = "hatch_build.py"
 
-[dependency-groups]
-dev = [
-    "hatchling>=1.27.0",
-    "jupyterlab>=4.5.0",
-    "marimo>=0.18.0",
-]
 
 [tool.taskipy.tasks]
 docs-serve = "mkdocs serve"
