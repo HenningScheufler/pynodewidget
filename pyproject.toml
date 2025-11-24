@@ -19,6 +19,13 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://henningscheufler.github.io/pynodewidget/"
+Issues = "https://github.com/HenningScheufler/pynodewidget/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
