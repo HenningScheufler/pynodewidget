@@ -31,9 +31,11 @@ export function FilterControls({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Layouts</SelectItem>
-            <SelectItem value="horizontal">Horizontal Only</SelectItem>
-            <SelectItem value="vertical">Vertical Only</SelectItem>
-            <SelectItem value="compact">Compact Only</SelectItem>
+            <SelectItem value="horizontal_grid">Horizontal Grid</SelectItem>
+            <SelectItem value="vertical_grid">Vertical Grid</SelectItem>
+            <SelectItem value="compact_grid">Compact Grid</SelectItem>
+            <SelectItem value="two_column_grid">Two-Column Grid</SelectItem>
+            <SelectItem value="sidebar_grid">Sidebar Grid</SelectItem>
           </SelectContent>
         </Select>
       </div>

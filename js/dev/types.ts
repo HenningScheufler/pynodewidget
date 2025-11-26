@@ -1,25 +1,26 @@
-export interface Layout {
+import type { CustomNodeData } from '../src/types/schema';
+
+export interface GridLayoutExample {
   type: string;
   label: string;
+  icon: string;
+  description: string;
+  defaultData: CustomNodeData;
 }
 
-export interface HandleType {
+export interface HandleTypeTemplate {
   type: string;
   label: string;
+  icon: string;
+  description: string;
+  defaultData: CustomNodeData;
 }
 
-export interface NodeData {
-  label: string;
-  parameters: any;
-  inputs: Array<{ id: string; label: string }>;
-  outputs: Array<{ id: string; label: string }>;
-  values: Record<string, any>;
-  layoutType?: string;
-  handleType?: string;
-}
+// Re-export CustomNodeData as NodeData for dev convenience
+export type NodeData = CustomNodeData;
 
 export interface Combination {
-  layout: Layout;
-  handle: HandleType;
+  layout: GridLayoutExample;
+  handle: HandleTypeTemplate;
   label: string;
 }

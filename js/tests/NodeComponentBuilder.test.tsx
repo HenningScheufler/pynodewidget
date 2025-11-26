@@ -6,14 +6,15 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { nodeFactory } from '../src/components/NodeFactory';
 import { NodeComponentBuilder } from '../src/utils/NodeComponentBuilder';
 import { SetNodeValuesContext } from '../src/index';
+import { createHorizontalGridLayout } from '../src/utils/gridLayoutHelpers';
 import type { NodeProps } from '@xyflow/react';
 import type { CustomNodeData } from '../src/types/schema';
 
 beforeAll(() => {
-  // Register a default test node component
+  // Register a default test node component with grid layout
   const testSchema: CustomNodeData = {
     label: 'Test',
-    layoutType: 'horizontal',
+    gridLayout: createHorizontalGridLayout(),
   };
   const component = NodeComponentBuilder.buildComponent(testSchema);
   nodeFactory.register('jsonschema', component);
@@ -57,14 +58,18 @@ const createMockNodeProps = (data: any, selected = false): NodeProps => ({
 describe('NodeComponentBuilder', () => {
   describe('Node Rendering', () => {
     it('renders node with label', () => {
-      const mockData = { label: 'Test Node' };
+      const mockData: CustomNodeData = { 
+        label: 'Test Node',
+        gridLayout: createHorizontalGridLayout()
+      };
       renderWithReactFlow(createMockNodeProps(mockData));
       expect(screen.getByText('Test Node')).toBeInTheDocument();
     });
 
     it('renders input handles when provided', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Node with Inputs',
+        gridLayout: createHorizontalGridLayout(),
         inputs: [
           { id: 'input1', label: 'Input 1' },
           { id: 'input2', label: 'Input 2' },
@@ -76,8 +81,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('renders output handles when provided', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Node with Outputs',
+        gridLayout: createHorizontalGridLayout(),
         outputs: [
           { id: 'output1', label: 'Output 1' },
           { id: 'output2', label: 'Output 2' },
@@ -91,8 +97,9 @@ describe('NodeComponentBuilder', () => {
 
   describe('Schema Form Inputs', () => {
     it('renders string input', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'String Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -107,8 +114,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('renders number input with correct step', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Number Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -124,8 +132,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('renders integer input with step=1', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Integer Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -140,8 +149,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('renders boolean checkbox', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Boolean Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -156,8 +166,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('renders select dropdown for enum', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Enum Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -178,8 +189,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('shows required marker for required fields', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Required Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -197,8 +209,9 @@ describe('NodeComponentBuilder', () => {
 
   describe('Input Interactions', () => {
     it('handles string input change', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'String Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -214,8 +227,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('handles number input change', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Number Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -231,8 +245,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('handles checkbox toggle', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Boolean Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -249,8 +264,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('handles select dropdown change', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Enum Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -272,15 +288,19 @@ describe('NodeComponentBuilder', () => {
 
   describe('Edge Cases', () => {
     it('handles missing schema gracefully', () => {
-      const mockData = { label: 'Simple Node' };
+      const mockData: CustomNodeData = { 
+        label: 'Simple Node',
+        gridLayout: createHorizontalGridLayout()
+      };
       renderWithReactFlow(createMockNodeProps(mockData));
       expect(screen.getByText('Simple Node')).toBeInTheDocument();
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     });
 
     it('uses default value when no value is provided', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Default Value Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {
@@ -294,8 +314,9 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('prefers values over defaults', () => {
-      const mockData = {
+      const mockData: CustomNodeData = {
         label: 'Values Node',
+        gridLayout: createHorizontalGridLayout(),
         parameters: {
           type: 'object',
           properties: {

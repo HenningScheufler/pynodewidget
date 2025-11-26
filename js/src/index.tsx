@@ -49,9 +49,21 @@ export const useSetNodeValues = () => {
 // Export fieldRegistry and FieldRenderer for custom field type registration
 export { fieldRegistry, type FieldRenderer };
 
-// Export layout registry for custom layouts
-export { getLayout, registerLayout, getAvailableLayouts } from "./components/layouts/LayoutFactory";
-export type { LayoutComponent, LayoutProps } from "./components/layouts/LayoutFactory";
+// Export grid layout system
+export { LayoutFactory } from "./components/layouts/LayoutFactory";
+export { GridLayout } from "./components/layouts/GridLayout";
+export { NodeDataContext } from "./components/layouts/ContentRenderer";
+export type { NodeGridLayoutConfig, GridLayout as GridLayoutType, ContentArea } from "./types/grid";
+
+// Export grid layout helpers
+export {
+  createHorizontalGridLayout,
+  createVerticalGridLayout,
+  createCompactGridLayout,
+  createCustomGridLayout,
+  createTwoColumnGridLayout,
+  createSidebarGridLayout,
+} from "./utils/gridLayoutHelpers";
 
 // Export handle registry for custom handles
 export { getHandle, registerHandle, getAvailableHandles } from "./components/handles/HandleFactory";

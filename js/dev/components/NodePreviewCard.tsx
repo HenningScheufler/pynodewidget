@@ -16,15 +16,21 @@ export function NodePreviewCard({ combo, sampleNodeData, showSelected }: NodePre
   const nodeId = `node-${combo.layout.type}-${combo.handle.type}`;
   const [, setNodeValues] = useState<Record<string, any>>({});
   
-  // Build node component from schema
+  // Build node component from schema with grid layout and handle type combined
   const nodeComponent = useMemo(() => {
+    // Combine grid layout data with handle type
     const schema: CustomNodeData = {
-      ...sampleNodeData,
-      layoutType: combo.layout.type,
-      handleType: combo.handle.type
+      ...combo.layout.defaultData,  // Grid layout data (includes gridLayout property)
+      handleType: combo.handle.type as any,  // Override with selected handle type
+      label: combo.label,  // Combined label
+      header: {
+        ...combo.layout.defaultData.header,
+        icon: `${combo.layout.icon} ${combo.handle.icon}`  // Combine icons
+      }
     };
+    
     return NodeComponentBuilder.buildComponent(schema);
-  }, [combo.layout.type, combo.handle.type, sampleNodeData]);
+  }, [combo.layout, combo.handle]);
   
   const nodeTypes = useMemo(() => ({ preview: nodeComponent }), [nodeComponent]);
   
@@ -42,9 +48,9 @@ export function NodePreviewCard({ combo, sampleNodeData, showSelected }: NodePre
                 type: 'preview',
                 position: { x: 0, y: 0 },
                 data: {
-                  ...sampleNodeData,
-                  layoutType: combo.layout.type,
-                  handleType: combo.handle.type
+                  ...combo.layout.defaultData,
+                  handleType: combo.handle.type as any,
+                  label: combo.label
                 }
               }]}
               edges={[]}

@@ -79,7 +79,7 @@ class NodeFactory(Protocol):
     description: str
     inputs: Union[Type[BaseModel], List[Dict[str, str]], List[HandleSpec]]
     outputs: Union[Type[BaseModel], List[Dict[str, str]], List[HandleSpec]]
-    layout_type: str
+    grid_layout: Optional[Dict[str, Any]]
     handle_type: str
     
     def __init__(self, **initial_values: Any) -> None:
@@ -145,7 +145,7 @@ class NodeMetadata:
         description: str = "",
         inputs: List[Dict[str, str]] = None,
         outputs: List[Dict[str, str]] = None,
-        layout_type: str = "horizontal",
+        grid_layout: Dict[str, Any] = None,
         handle_type: str = "base",
     ):
         """Initialize node metadata.
@@ -159,7 +159,7 @@ class NodeMetadata:
             description: Help text
             inputs: List of input handle configurations
             outputs: List of output handle configurations
-            layout_type: Layout style for the node (e.g., "horizontal", "vertical")
+            grid_layout: Grid layout configuration (replaces layout_type)
             handle_type: Default handle type for all handles (e.g., "base", "button", "labeled")
         """
         self.type_name = type_name
@@ -170,7 +170,7 @@ class NodeMetadata:
         self.description = description
         self.inputs = inputs or []
         self.outputs = outputs or []
-        self.layout_type = layout_type
+        self.grid_layout = grid_layout
         self.handle_type = handle_type
     
     def to_dict(self) -> Dict[str, Any]:
@@ -179,22 +179,43 @@ class NodeMetadata:
         Returns:
             Dictionary representation of node metadata
         """
-        return {
-            "type": self.type_name,
+        from .grid_layouts import create_horizontal_grid_layout
+        from .models import CustomNodeData, NodeTemplate
+        
+        # Get grid layout if specified, otherwise use default horizontal
+        grid_layout = getattr(self, 'grid_layout', None)
+        if grid_layout is None:
+            grid_layout = create_horizontal_grid_layout()
+        
+        # Build and validate default data using Pydantic
+        default_data_dict = {
             "label": self.label,
-            "icon": self.icon,
-            "category": self.category,
-            "description": self.description,
-            "defaultData": {
-                "label": self.label,
-                "parameters": self.parameters_schema,
-                "inputs": self.inputs,
-                "outputs": self.outputs,
-                "layoutType": self.layout_type,
-                "handleType": self.handle_type,
-                "values": {},
-            }
+            "parameters": self.parameters_schema,
+            "inputs": self.inputs,
+            "outputs": self.outputs,
+            "gridLayout": grid_layout,
+            "handleType": self.handle_type,
+            "values": {},
         }
+        
+        try:
+            # Validate the default data structure
+            default_data = CustomNodeData(**default_data_dict)
+            
+            # Create and validate the full template
+            template_dict = {
+                "type": self.type_name,
+                "label": self.label,
+                "icon": self.icon,
+                "category": self.category,
+                "description": self.description,
+                "defaultData": default_data.model_dump()
+            }
+            template = NodeTemplate(**template_dict)
+            
+            return template.model_dump()
+        except Exception as e:
+            raise ValueError(f"Failed to create valid node template from metadata: {e}")
     
     @classmethod
     def from_node_class(cls, node_class: Type[NodeFactory], type_name: Optional[str] = None) -> "NodeMetadata":
@@ -235,7 +256,7 @@ class NodeMetadata:
         description = getattr(node_class, 'description', '')
         inputs = getattr(node_class, 'inputs', [])
         outputs = getattr(node_class, 'outputs', [])
-        layout_type = getattr(node_class, 'layout_type', 'horizontal')
+        grid_layout = getattr(node_class, 'grid_layout', None)
         handle_type = getattr(node_class, 'handle_type', 'base')
         
         # Convert Pydantic models for inputs/outputs to handle configs
@@ -257,7 +278,7 @@ class NodeMetadata:
             description=description,
             inputs=inputs,
             outputs=outputs,
-            layout_type=layout_type,
+            grid_layout=grid_layout,
             handle_type=handle_type,
         )
     

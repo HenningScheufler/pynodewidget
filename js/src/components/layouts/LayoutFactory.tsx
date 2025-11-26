@@ -1,57 +1,28 @@
-import React from "react";
-import type { HandleConfig } from "../../types/schema";
-import type { HandleType } from "../handles/HandleFactory";
-import { HorizontalLayout } from "./HorizontalLayout";
-import { VerticalLayout } from "./VerticalLayout";
-import { CompactLayout } from "./CompactLayout";
+/**
+ * LayoutFactory - Grid layout system
+ * 
+ * This module provides the grid-based layout system for nodes.
+ * Legacy layout types (horizontal, vertical, compact) have been removed
+ * in favor of the flexible grid system.
+ */
 
-export interface LayoutProps {
-  inputs?: HandleConfig[];
-  outputs?: HandleConfig[];
-  children?: React.ReactNode;
-  handleType?: HandleType;
-  inputHandleType?: HandleType;
-  outputHandleType?: HandleType;
+import React from "react";
+import type { NodeGridLayoutConfig } from "../../types/grid";
+import { GridLayout } from "./GridLayout";
+
+export interface LayoutFactoryProps {
+  config: NodeGridLayoutConfig;
 }
 
-export type LayoutComponent = React.ComponentType<LayoutProps>;
-
 /**
- * Registry of available layout components
+ * LayoutFactory component - renders grid layouts
  */
-const layoutRegistry: Record<string, LayoutComponent> = {
-  horizontal: HorizontalLayout,
-  vertical: VerticalLayout,
-  compact: CompactLayout,
-  default: HorizontalLayout, // Explicit default alias
-};
-
-/**
- * Get a layout component by type
- * @param layoutType - The layout type identifier
- * @returns The layout component, or HorizontalLayout as fallback
- */
-export function getLayout(layoutType?: string): LayoutComponent {
-  if (!layoutType) {
-    return HorizontalLayout;
+export const LayoutFactory: React.FC<LayoutFactoryProps> = ({ config }) => {
+  if (config.type === "grid") {
+    return <GridLayout layout={config.layout} />;
   }
   
-  return layoutRegistry[layoutType.toLowerCase()] || HorizontalLayout;
-}
-
-/**
- * Register a custom layout component
- * @param layoutType - Unique identifier for the layout
- * @param component - React component implementing LayoutProps interface
- */
-export function registerLayout(layoutType: string, component: LayoutComponent): void {
-  layoutRegistry[layoutType.toLowerCase()] = component;
-}
-
-/**
- * Get all registered layout types
- * @returns Array of layout type identifiers
- */
-export function getAvailableLayouts(): string[] {
-  return Object.keys(layoutRegistry).filter(key => key !== 'default');
-}
+  // Fallback for invalid config
+  console.error("Invalid layout configuration:", config);
+  return <div className="p-3 text-red-500">Invalid layout type: {config.type}</div>;
+};

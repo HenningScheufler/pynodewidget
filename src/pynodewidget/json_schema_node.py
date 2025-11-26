@@ -56,7 +56,7 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
     description: str = ""
     inputs: Union[Type[BaseModel], List[Dict[str, str]]] = []
     outputs: Union[Type[BaseModel], List[Dict[str, str]]] = []
-    layout_type: str = "horizontal"
+    grid_layout: Optional[Dict[str, Any]] = None  # Grid layout config
     handle_type: str = "base"
     
     def __init__(self, id=None, data=None, selected=None, **initial_values):
@@ -122,15 +122,31 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         if isinstance(outputs, type) and issubclass(outputs, BaseModel):
             outputs = self._pydantic_to_handles(outputs)
         
-        return {
+        # Get grid layout, use default if not specified
+        from .grid_layouts import create_horizontal_grid_layout
+        from .models import CustomNodeData
+        
+        grid_layout = self.__class__.grid_layout
+        if grid_layout is None:
+            grid_layout = create_horizontal_grid_layout()
+        
+        # Build and validate data dict using Pydantic
+        data_dict = {
             "label": self.__class__.label,
             "parameters": parameters_schema,
             "inputs": inputs if isinstance(inputs, list) else [],
             "outputs": outputs if isinstance(outputs, list) else [],
             "values": values,
-            "layoutType": self.__class__.layout_type,
+            "gridLayout": grid_layout,
             "handleType": self.__class__.handle_type,
         }
+        
+        try:
+            # Validate the data structure
+            validated_data = CustomNodeData(**data_dict)
+            return validated_data.model_dump()
+        except Exception as e:
+            raise ValueError(f"Failed to create valid node data: {e}")
     
     @staticmethod
     def _pydantic_to_handles(model: Type[BaseModel]) -> List[Dict[str, str]]:

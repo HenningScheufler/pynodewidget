@@ -19,9 +19,10 @@ import type {
   NodeTemplate,
   FieldValue,
 } from "../types/schema";
-import { getLayout } from "../components/layouts/LayoutFactory";
+import { GridLayout } from "../components/layouts/GridLayout";
+import { NodeGridRenderer } from "../components/GridRenderer";
+import { NodeDataContext } from "../components/layouts/ContentRenderer";
 import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { NodeForm } from "../components/NodeForm";
 import { cn } from "@/lib/utils";
 import { useSetNodeValues } from "../index";
 
@@ -32,8 +33,10 @@ import { useSetNodeValues } from "../index";
  * ```typescript
  * const schema: CustomNodeData = {
  *   label: "Processor",
- *   layoutType: "horizontal",
- *   handleType: "button",
+ *   gridLayout: {
+ *     type: "grid",
+ *     layout: { ... }
+ *   },
  *   header: { show: true, icon: "⚙️" }
  * };
  * 
@@ -43,15 +46,13 @@ import { useSetNodeValues } from "../index";
  */
 export class NodeComponentBuilder {
   private schema: CustomNodeData;
-  private LayoutComponent: ReturnType<typeof getLayout>;
 
   constructor(schema: CustomNodeData) {
     this.schema = schema;
     
-    // Resolve layout at build time
-    this.LayoutComponent = getLayout(schema.layoutType);
-    if (!this.LayoutComponent) {
-      throw new Error(`Unknown layoutType: "${schema.layoutType}".`);
+    // Validate that either new grid or old gridLayout is provided
+    if (!schema.grid && !schema.gridLayout) {
+      throw new Error("Either 'grid' (new system) or 'gridLayout' (old system) is required in schema.");
     }
   }
 
@@ -149,7 +150,7 @@ export class NodeComponentBuilder {
    * (when id, selected, or values change).
    */
   buildComponent(): ComponentType<NodeProps> {
-    const { schema, LayoutComponent } = this;
+    const { schema } = this;
     const headerConfig = this.buildHeaderConfig();
     const footerConfig = this.buildFooterConfig();
     const styleConfig = this.buildStyleConfig();
@@ -166,6 +167,18 @@ export class NodeComponentBuilder {
         }));
       }, [id, setNodeValues]);
 
+      // Support both new grid system and old gridLayout system
+      const useNewGrid = !!nodeData.grid || !!schema.grid;
+      const grid = nodeData.grid || schema.grid;
+      const gridLayout = nodeData.gridLayout || schema.gridLayout;
+
+      // Create context value for widgets
+      const contextValue = React.useMemo(() => ({
+        nodeId: id,
+        nodeData,
+        onValueChange: handleInputChange
+      }), [id, nodeData, handleInputChange]);
+
       return (
         <Card 
           className={cn(
@@ -176,24 +189,23 @@ export class NodeComponentBuilder {
         >
           {headerConfig.element}
           
-          <LayoutComponent 
-            inputs={nodeData.inputs || schema.inputs} 
-            outputs={nodeData.outputs || schema.outputs}
-            handleType={schema.handleType}
-            inputHandleType={schema.inputHandleType}
-            outputHandleType={schema.outputHandleType}
-          >
-            {nodeData.parameters && (
-              <NodeForm
+          <NodeDataContext.Provider value={contextValue}>
+            {useNewGrid && grid ? (
+              // New three-layer grid system
+              <NodeGridRenderer 
+                grid={grid}
                 nodeId={id}
-                parameters={nodeData.parameters}
-                values={nodeData.values}
                 onValueChange={handleInputChange}
-                fieldConfigs={nodeData.fieldConfigs}
-                validation={nodeData.validation}
               />
+            ) : gridLayout ? (
+              // Old grid system
+              <GridLayout layout={gridLayout.layout} />
+            ) : (
+              <div className="p-4 text-red-500 text-sm">
+                Error: No grid configuration found
+              </div>
             )}
-          </LayoutComponent>
+          </NodeDataContext.Provider>
           
           {footerConfig.element}
         </Card>

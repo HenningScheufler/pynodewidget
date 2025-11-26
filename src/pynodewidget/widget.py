@@ -180,12 +180,14 @@ class NodeFlowWidget(anywidget.AnyWidget):
         description: str = "",
         icon: str = "",
         inputs: Optional[List[Dict[str, str]]] = None,
-        outputs: Optional[List[Dict[str, str]]] = None
+        outputs: Optional[List[Dict[str, str]]] = None,
+        grid_layout: Optional[Dict[str, Any]] = None,
+        handle_type: str = "base",
+        header: Optional[Dict[str, Any]] = None,
+        footer: Optional[Dict[str, Any]] = None,
+        style: Optional[Dict[str, Any]] = None
     ):
-        """Add a node type from a JSON schema (legacy method).
-        
-        Note: This is a legacy method for backward compatibility. For new code,
-        prefer creating a node class and using register_node_type() instead.
+        """Add a node type from a JSON schema with grid layout support.
         
         Args:
             json_schema: JSON Schema definition (can be from Pydantic model_json_schema())
@@ -197,7 +199,29 @@ class NodeFlowWidget(anywidget.AnyWidget):
                    [{"id": "in1", "label": "Input 1"}, {"id": "in2", "label": "Input 2"}]
             outputs: List of output handles with id and label, e.g.,
                     [{"id": "out1", "label": "Output 1"}]
+            grid_layout: Grid layout configuration (use helpers from grid_layouts module).
+                        If not provided, defaults to horizontal grid layout.
+            handle_type: Handle style - "base", "button", or "labeled" (default: "base")
+            header: Header configuration dict with 'show', 'icon', 'bgColor', 'textColor', etc.
+            footer: Footer configuration dict with 'show', 'text', 'className', etc.
+            style: Style configuration dict with 'minWidth', 'maxWidth', 'shadow', etc.
+            
+        Example:
+            >>> from pynodewidget.grid_layouts import create_vertical_grid_layout
+            >>> 
+            >>> widget.add_node_type_from_schema(
+            ...     json_schema={"type": "object", "properties": {...}},
+            ...     type_name="processor",
+            ...     label="Data Processor",
+            ...     icon="⚙️",
+            ...     grid_layout=create_vertical_grid_layout(),
+            ...     handle_type="button",
+            ...     header={"show": True, "bgColor": "#3b82f6", "textColor": "#ffffff"}
+            ... )
         """
+        from .grid_layouts import create_horizontal_grid_layout
+        from .models import CustomNodeData, NodeTemplate
+        
         # Initialize default values from schema
         default_values = {}
         if json_schema and "properties" in json_schema:
@@ -205,21 +229,46 @@ class NodeFlowWidget(anywidget.AnyWidget):
                 if "default" in prop:
                     default_values[key] = prop["default"]
         
-        template = {
-            "type": type_name,
+        # Use horizontal grid layout as default if none provided
+        if grid_layout is None:
+            grid_layout = create_horizontal_grid_layout()
+        
+        # Build default data with grid layout
+        default_data_dict = {
             "label": label,
-            "description": description,
-            "icon": icon,
-            "defaultData": {
-                "label": label,
-                "parameters": json_schema,  # Changed from 'schema' to 'parameters'
-                "inputs": inputs or [],
-                "outputs": outputs or [],
-                "values": default_values
-            }
+            "parameters": json_schema,
+            "inputs": inputs or [],
+            "outputs": outputs or [],
+            "values": default_values,
+            "gridLayout": grid_layout,
+            "handleType": handle_type
         }
         
-        self.node_templates = self.node_templates + [template]
+        # Add optional configurations
+        if header is not None:
+            default_data_dict["header"] = header
+        if footer is not None:
+            default_data_dict["footer"] = footer
+        if style is not None:
+            default_data_dict["style"] = style
+        
+        # Validate using Pydantic models
+        try:
+            default_data = CustomNodeData(**default_data_dict)
+            template_dict = {
+                "type": type_name,
+                "label": label,
+                "description": description,
+                "icon": icon,
+                "defaultData": default_data.model_dump()
+            }
+            template = NodeTemplate(**template_dict)
+            
+            # Add validated template
+            self.node_templates = self.node_templates + [template.model_dump()]
+        except Exception as e:
+            raise ValueError(f"Failed to create valid node template: {e}")
+        
         return self
     
     def add_node_type_from_pydantic(

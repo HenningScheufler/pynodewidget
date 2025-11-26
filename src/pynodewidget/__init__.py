@@ -7,6 +7,8 @@ from .protocols import NodeFactory, NodeMetadata
 from .json_schema_node import JsonSchemaNodeWidget
 from .observable_dict import ObservableDict
 from . import node_builder
+from . import grid_layouts
+from . import models
 
 __all__ = [
     "NodeFlowWidget",
@@ -15,4 +17,6 @@ __all__ = [
     "JsonSchemaNodeWidget",
     "ObservableDict",
     "node_builder",
+    "grid_layouts",
+    "models",
 ]
