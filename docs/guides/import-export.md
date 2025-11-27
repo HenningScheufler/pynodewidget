@@ -524,193 +524,21 @@ with open("subgraph.json", "w") as f:
 
 ## Best Practices
 
-### 1. Version Filenames
-
-Include version or date:
-
-```python
-from datetime import datetime
-
-# Date-based
-date_str = datetime.now().strftime("%Y%m%d")
-flow.export_json(f"workflow_{date_str}.json")
-
-# Version-based
-version = "1.2.3"
-flow.export_json(f"workflow_v{version}.json")
-```
-
-### 2. Validate Before Export
-
-```python
-def validate_workflow(flow):
-    """Check workflow is valid before export."""
-    if not flow.nodes:
-        return False, "No nodes in workflow"
-    
-    if not flow.node_templates:
-        return False, "No node templates registered"
-    
-    # Check all node types exist
-    valid_types = {t["type"] for t in flow.node_templates}
-    for node in flow.nodes:
-        if node.get("type") not in valid_types:
-            return False, f"Unknown node type: {node.get('type')}"
-    
-    return True, "Valid"
-
-# Validate before export
-is_valid, message = validate_workflow(flow)
-if is_valid:
-    flow.export_json("workflow.json")
-else:
-    print(f"Cannot export: {message}")
-```
-
-### 3. Include Metadata
-
-Add metadata to exports:
-
-```python
-import json
-from datetime import datetime
-
-# Standard export
-flow.export_json("workflow.json")
-
-# Load and add metadata
-with open("workflow.json", "r") as f:
-    data = json.load(f)
-
-data["metadata"] = {
-    "created": datetime.now().isoformat(),
-    "author": "user@example.com",
-    "version": "1.0",
-    "description": "Data processing pipeline"
-}
-
-# Save with metadata
-with open("workflow.json", "w") as f:
-    json.dump(data, f, indent=2)
-```
-
-### 4. Error Handling
-
-Handle errors gracefully:
-
-```python
-def safe_export(flow, filename):
-    """Export with error handling."""
-    try:
-        flow.export_json(filename)
-        return True
-    except Exception as e:
-        print(f"Export failed: {e}")
-        return False
-
-def safe_load(flow, filename):
-    """Load with error handling."""
-    try:
-        flow.load_json(filename)
-        return True
-    except FileNotFoundError:
-        print(f"File not found: {filename}")
-        return False
-    except json.JSONDecodeError:
-        print(f"Invalid JSON in {filename}")
-        return False
-    except Exception as e:
-        print(f"Load failed: {e}")
-        return False
-
-# Usage
-if safe_export(flow, "workflow.json"):
-    print("Export successful")
-
-if safe_load(flow, "workflow.json"):
-    print("Load successful")
-```
-
-### 5. Backup Before Load
-
-```python
-# Backup current workflow before loading new one
-flow.export_json("backup_before_load.json")
-
-# Now safe to load
-flow.load_json("new_workflow.json")
-```
+- **Version filenames**: Include version or date in filename
+- **Validate before export**: Check workflow is valid
+- **Include metadata**: Add creation date, author, version info
+- **Error handling**: Use try/except for safe export/import
+- **Backup before load**: Export current state before loading new workflow
 
 ## Troubleshooting
 
-### File Not Found
+**File not found**: Check file path and current directory.
 
-Check file path:
+**Invalid JSON**: Validate JSON syntax before loading.
 
-```python
-import os
+**Missing node templates**: Register all node types before loading workflow.
 
-filename = "workflow.json"
-
-if not os.path.exists(filename):
-    print(f"File not found: {filename}")
-    print(f"Current directory: {os.getcwd()}")
-    print(f"Files available: {os.listdir('.')}")
-```
-
-### Invalid JSON
-
-Validate JSON before loading:
-
-```python
-import json
-
-try:
-    with open("workflow.json", "r") as f:
-        data = json.load(f)
-    print("✓ Valid JSON")
-except json.JSONDecodeError as e:
-    print(f"Invalid JSON: {e}")
-```
-
-### Missing Node Templates
-
-Ensure node types are registered:
-
-```python
-# Load workflow
-flow.load_json("workflow.json")
-
-# Check for unknown types
-used_types = {node["type"] for node in flow.nodes}
-registered_types = {t["type"] for t in flow.node_templates}
-
-unknown = used_types - registered_types
-if unknown:
-    print(f"Warning: Unknown node types: {unknown}")
-    print("Register these node types before using the workflow")
-```
-
-### Large Files
-
-Handle large workflows:
-
-```python
-import json
-
-# Check file size before loading
-import os
-size_mb = os.path.getsize("workflow.json") / (1024 * 1024)
-
-if size_mb > 10:
-    print(f"Warning: Large file ({size_mb:.1f} MB)")
-    response = input("Continue loading? (y/n): ")
-    if response.lower() != 'y':
-        exit()
-
-# Load
-flow.load_json("workflow.json")
-```
+**Large files**: Check file size and confirm before loading very large workflows.
 
 ## Next Steps
 

@@ -81,8 +81,8 @@ class TestNodeInstantiation:
         node = FullNode()
         
         assert node.data["label"] == "Full Node"
-        assert node.data["inputs"] == [{"id": "in1", "label": "Input 1"}]
-        assert node.data["outputs"] == [{"id": "out1", "label": "Output 1"}]
+        assert node.data["inputs"] == [{"id": "in1", "label": "Input 1", "handleType": None}]
+        assert node.data["outputs"] == [{"id": "out1", "label": "Output 1", "handleType": None}]
         assert "parameters" in node.data
     
     def test_typed_handles_conversion(self):

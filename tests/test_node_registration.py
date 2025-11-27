@@ -97,8 +97,8 @@ class TestNodeRegistration:
         assert template["description"] == "An advanced processing node"
         
         data = template["defaultData"]
-        assert data["inputs"] == [{"id": "input", "label": "Input"}]
-        assert data["outputs"] == [{"id": "output", "label": "Output"}]
+        assert data["inputs"] == [{"id": "input", "label": "Input", "handleType": None}]
+        assert data["outputs"] == [{"id": "output", "label": "Output", "handleType": None}]
     
     def test_register_invalid_node_raises_error(self):
         """Test that registering invalid node raises AttributeError."""

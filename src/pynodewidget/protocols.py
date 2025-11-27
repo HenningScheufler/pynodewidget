@@ -179,21 +179,29 @@ class NodeMetadata:
         Returns:
             Dictionary representation of node metadata
         """
-        from .grid_layouts import create_horizontal_grid_layout
+        from .grid_layouts import create_three_column_grid, convert_handles_to_components
         from .models import CustomNodeData, NodeTemplate
         
-        # Get grid layout if specified, otherwise use default horizontal
-        grid_layout = getattr(self, 'grid_layout', None)
-        if grid_layout is None:
-            grid_layout = create_horizontal_grid_layout()
+        # Get grid layout if specified, otherwise create default three-column grid
+        grid = getattr(self, 'grid', None)
+        if grid is None:
+            # Convert handles to components for the new system
+            input_comps, output_comps = convert_handles_to_components(
+                self.inputs, self.outputs, self.handle_type
+            )
+            grid = create_three_column_grid(
+                left_components=input_comps,
+                center_components=[],  # Parameters will be auto-generated from schema
+                right_components=output_comps
+            )
         
         # Build and validate default data using Pydantic
         default_data_dict = {
             "label": self.label,
+            "grid": grid,
             "parameters": self.parameters_schema,
             "inputs": self.inputs,
             "outputs": self.outputs,
-            "gridLayout": grid_layout,
             "handleType": self.handle_type,
             "values": {},
         }

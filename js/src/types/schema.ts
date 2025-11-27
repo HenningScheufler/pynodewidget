@@ -2,8 +2,6 @@
  * Type definitions for JSON Schema and node data structures
  */
 
-import type { NodeGridLayoutConfig } from "./grid";
-
 export type JsonSchemaType = "string" | "number" | "integer" | "boolean" | "object" | "array";
 
 export interface JsonSchemaProperty {
@@ -296,8 +294,6 @@ export interface CustomNodeData extends Record<string, unknown> {
   outputs?: HandleConfig[];
   
   // Layout configuration
-  layoutType?: string;
-  gridLayout?: NodeGridLayoutConfig; // Old grid-based layout system
   handleType?: "base" | "button" | "labeled"; // Global handle type
   inputHandleType?: "base" | "button" | "labeled"; // Input-specific handle type
   outputHandleType?: "base" | "button" | "labeled"; // Output-specific handle type

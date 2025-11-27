@@ -123,21 +123,31 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
             outputs = self._pydantic_to_handles(outputs)
         
         # Get grid layout, use default if not specified
-        from .grid_layouts import create_horizontal_grid_layout
+        from .grid_layouts import create_three_column_grid, convert_handles_to_components
         from .models import CustomNodeData
         
         grid_layout = self.__class__.grid_layout
         if grid_layout is None:
-            grid_layout = create_horizontal_grid_layout()
+            # Convert handles to components for the new system
+            input_comps, output_comps = convert_handles_to_components(
+                inputs if isinstance(inputs, list) else [],
+                outputs if isinstance(outputs, list) else [],
+                self.__class__.handle_type
+            )
+            grid_layout = create_three_column_grid(
+                left_components=input_comps,
+                center_components=[],  # Parameters will be auto-generated from schema
+                right_components=output_comps
+            )
         
         # Build and validate data dict using Pydantic
         data_dict = {
             "label": self.__class__.label,
+            "grid": grid_layout,
             "parameters": parameters_schema,
             "inputs": inputs if isinstance(inputs, list) else [],
-            "outputs": outputs if isinstance(outputs, list) else [],
+            "outputs": outputs if isinstance(inputs, list) else [],
             "values": values,
-            "gridLayout": grid_layout,
             "handleType": self.__class__.handle_type,
         }
         

@@ -214,12 +214,12 @@ class NodeFlowWidget(anywidget.AnyWidget):
             ...     type_name="processor",
             ...     label="Data Processor",
             ...     icon="⚙️",
-            ...     grid_layout=create_vertical_grid_layout(),
+            ...     grid_layout=create_three_column_grid(...),
             ...     handle_type="button",
             ...     header={"show": True, "bgColor": "#3b82f6", "textColor": "#ffffff"}
             ... )
         """
-        from .grid_layouts import create_horizontal_grid_layout
+        from .grid_layouts import create_three_column_grid, convert_handles_to_components
         from .models import CustomNodeData, NodeTemplate
         
         # Initialize default values from schema
@@ -229,18 +229,26 @@ class NodeFlowWidget(anywidget.AnyWidget):
                 if "default" in prop:
                     default_values[key] = prop["default"]
         
-        # Use horizontal grid layout as default if none provided
+        # Use three-column grid layout as default if none provided
         if grid_layout is None:
-            grid_layout = create_horizontal_grid_layout()
+            # Convert handles to components for the new system
+            input_comps, output_comps = convert_handles_to_components(
+                inputs, outputs, handle_type
+            )
+            grid_layout = create_three_column_grid(
+                left_components=input_comps,
+                center_components=[],  # Parameters will be auto-generated from schema  
+                right_components=output_comps
+            )
         
         # Build default data with grid layout
         default_data_dict = {
             "label": label,
+            "grid": grid_layout,
             "parameters": json_schema,
             "inputs": inputs or [],
             "outputs": outputs or [],
             "values": default_values,
-            "gridLayout": grid_layout,
             "handleType": handle_type
         }
         
