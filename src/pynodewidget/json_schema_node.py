@@ -105,7 +105,10 @@ class NodeBuilder(anywidget.AnyWidget):
         not as a standalone widget with pre-existing data.
         
         Returns:
-            Dictionary with label, grid layout, and values
+            Dictionary with label, grid layout, and values (DEPRECATED - will be removed)
+            
+        Note: This method is deprecated as part of the CustomNodeData removal.
+        Use NodeDefinition and separate defaultValues instead.
         """
         if self.__class__.parameters is None:
             return {}
@@ -115,7 +118,7 @@ class NodeBuilder(anywidget.AnyWidget):
         
         # Get grid layout from class attribute or use default
         from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
-        from .models import CustomNodeData
+        from .models import NodeDefinition
         
         grid_layout = self.__class__.grid_layout
         if grid_layout is None:
@@ -124,19 +127,22 @@ class NodeBuilder(anywidget.AnyWidget):
             field_components = json_schema_to_components(json_schema, values)
             grid_layout = create_vertical_stack_grid(middle_components=field_components)
         
-        # Build and validate data dict using Pydantic
-        data_dict = {
-            "label": self.__class__.label,
+        # Build and validate data dict using new NodeDefinition
+        definition_dict = {
             "grid": grid_layout,
-            "values": values,
         }
         
         try:
-            # Validate the data structure
-            validated_data = CustomNodeData(**data_dict)
-            return validated_data.model_dump()
+            # Validate the definition structure
+            validated_definition = NodeDefinition(**definition_dict)
+            # Return both definition and values for backward compatibility
+            return {
+                "definition": validated_definition.model_dump(),
+                "values": values,
+                "label": self.__class__.label
+            }
         except Exception as e:
-            raise ValueError(f"Failed to create valid node data: {e}") from e
+            raise ValueError(f"Failed to create valid node definition: {e}") from e
     
     
     # NodeFactory protocol methods

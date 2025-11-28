@@ -14,8 +14,8 @@ export function ComponentPreview() {
   const handleTypes = Object.values(nodeTemplatesByHandleType);
   
   const filteredLayouts = layoutFilter === 'all' ? layouts : layouts.filter(l => l.type === layoutFilter);
-  // Filter by the handleType in the defaultData, not the node type
-  const filteredHandles = handleFilter === 'all' ? handleTypes : handleTypes.filter(h => h.defaultData?.handleType === handleFilter);
+  // Filter by the handle type in the template type name
+  const filteredHandles = handleFilter === 'all' ? handleTypes : handleTypes.filter(h => h.type.includes(handleFilter));
   
   const combinations = filteredLayouts.flatMap(layout => 
     filteredHandles.map(handle => ({

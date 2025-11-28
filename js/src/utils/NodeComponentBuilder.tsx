@@ -14,62 +14,48 @@ import * as React from "react";
 import type { NodeProps } from "@xyflow/react";
 import type { ComponentType } from "react";
 import type { 
-  CustomNodeData, 
   NodeTemplate,
+  NodeGrid,
+  NodeStyleConfig,
   PrimitiveFieldValue,
   FieldValue,
 } from "../types/schema";
 import { NodeGridRenderer } from "../components/GridRenderer";
-import { NodeDataContext } from "../contexts/NodeDataContext";
+import { NodeDataContext, type NodeData } from "../contexts/NodeDataContext";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useSetNodeValues } from "../index";
-
-/**
- * Convert PrimitiveFieldValue to FieldValue discriminated union
- */
-function toFieldValue(value: PrimitiveFieldValue): FieldValue {
-  if (value === null) {
-    return { type: 'null', value: null };
-  }
-  if (typeof value === 'string') {
-    return { type: 'string', value };
-  }
-  if (typeof value === 'number') {
-    return { type: 'number', value };
-  }
-  if (typeof value === 'boolean') {
-    return { type: 'boolean', value };
-  }
-  throw new Error(`Unexpected value type: ${typeof value}`);
-}
 
 /**
  * NodeComponentBuilder class
  * 
  * @example
  * ```typescript
- * const schema: CustomNodeData = {
- *   label: "Processor",
+ * const definition = {
  *   grid: {
  *     rows: ["auto", "1fr", "auto"],
  *     columns: ["1fr"],
  *     cells: [...]
- *   }
+ *   },
+ *   style: { minWidth: "200px" }
  * };
  * 
- * const component = NodeComponentBuilder.buildComponent(schema);
+ * const component = NodeComponentBuilder.buildComponent(definition, "Processor");
  * ```
  */
 export class NodeComponentBuilder {
-  private schema: CustomNodeData;
+  private grid: NodeGrid;
+  private style?: NodeStyleConfig;
+  private label: string;
 
-  constructor(schema: CustomNodeData) {
-    this.schema = schema;
+  constructor(grid: NodeGrid, style?: NodeStyleConfig, label: string = "Node") {
+    this.grid = grid;
+    this.style = style;
+    this.label = label;
     
     // Validate that grid is provided
-    if (!schema.grid) {
-      throw new Error("'grid' property is required in schema. The old 'gridLayout' system has been removed.");
+    if (!grid) {
+      throw new Error("'grid' property is required in node definition.");
     }
   }
 
@@ -77,7 +63,7 @@ export class NodeComponentBuilder {
    * Build style configuration and compute CSS properties
    */
   private buildStyleConfig() {
-    const { style } = this.schema;
+    const { style } = this;
     
     const cardStyle: React.CSSProperties = {};
     if (style?.minWidth) {
@@ -115,28 +101,28 @@ export class NodeComponentBuilder {
    * (when id, selected, or values change).
    */
   buildComponent(): ComponentType<NodeProps> {
-    const { schema } = this;
+    const { grid, label } = this;
     const styleConfig = this.buildStyleConfig();
 
     // Generate component with all config baked into closure
     const GeneratedNode: React.FC<NodeProps> = ({ id, data, selected }) => {
-      const nodeData = data as CustomNodeData;
+      const nodeData = data as unknown as NodeData;
       const setNodeValues = useSetNodeValues();
 
       const handleInputChange = React.useCallback((key: string, value: PrimitiveFieldValue) => {
         setNodeValues(prev => ({
           ...prev,
-          [id]: { ...prev[id], [key]: toFieldValue(value) }
+          [id]: { ...prev[id], [key]: value }
         }));
       }, [id, setNodeValues]);
 
-      // Use grid from runtime data or fallback to schema
-      const grid = nodeData.grid || schema.grid;
+      // Use grid from runtime data or fallback to template grid
+      const currentGrid = nodeData.grid || grid;
 
       // Create context value
       const contextValue = React.useMemo(() => ({
         nodeId: id,
-        nodeData,
+        nodeData: nodeData || { label, grid, values: {} },
         onValueChange: handleInputChange
       }), [id, nodeData, handleInputChange]);
 
@@ -150,7 +136,7 @@ export class NodeComponentBuilder {
         >
           <NodeDataContext.Provider value={contextValue}>
             <NodeGridRenderer 
-              grid={grid}
+              grid={currentGrid}
               nodeId={id}
               onValueChange={handleInputChange}
             />
@@ -160,18 +146,25 @@ export class NodeComponentBuilder {
     };
 
     // Memoize for performance - only re-render if these props change
-    return React.memo(GeneratedNode, (prev, next) => 
-      prev.id === next.id && 
-      prev.selected === next.selected &&
-      prev.data.values === next.data.values
-    );
+    // Use JSON.stringify for deep comparison of values object
+    return React.memo(GeneratedNode, (prev, next) => {
+      if (prev.id !== next.id || prev.selected !== next.selected) {
+        return false; // Props changed, re-render
+      }
+      // Deep compare values
+      const prevValues = prev.data.values;
+      const nextValues = next.data.values;
+      if (prevValues === nextValues) return true; // Same reference
+      if (!prevValues || !nextValues) return prevValues === nextValues;
+      return JSON.stringify(prevValues) === JSON.stringify(nextValues);
+    });
   }
 
   /**
-   * Static helper to build a component from schema in one call
+   * Static helper to build a component from grid and style in one call
    */
-  static buildComponent(schema: CustomNodeData): ComponentType<NodeProps> {
-    const builder = new NodeComponentBuilder(schema);
+  static buildComponent(grid: NodeGrid, style?: NodeStyleConfig, label: string = "Node"): ComponentType<NodeProps> {
+    const builder = new NodeComponentBuilder(grid, style, label);
     return builder.buildComponent();
   }
 }
@@ -197,7 +190,12 @@ export function buildNodeTypes(templates: NodeTemplate[]): Record<string, Compon
   
   for (const template of templates) {
     try {
-      nodeTypes[template.type] = NodeComponentBuilder.buildComponent(template.defaultData);
+      // Use template.definition (NodeDefinition) which contains grid and style
+      nodeTypes[template.type] = NodeComponentBuilder.buildComponent(
+        template.definition.grid,
+        template.definition.style,
+        template.label
+      );
     } catch (error) {
       // Only log in non-test environments to avoid cluttering test output
       if (process.env.NODE_ENV !== 'test' && typeof process.env.VITEST === 'undefined') {

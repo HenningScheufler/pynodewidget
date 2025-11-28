@@ -18,12 +18,12 @@ export function NodeEditor() {
     }
     
     const selectedExample = nodeExamples[selectedLayout];
-    if (!selectedExample || !selectedExample.defaultData) {
+    if (!selectedExample || !selectedExample.definition) {
       setError('Selected layout not found');
       return;
     }
     
-    const mockModel = createMockModel([selectedExample.defaultData], selectedLayout);
+    const mockModel = createMockModel([selectedExample], selectedLayout);
     const editorEl = editorElRef.current;
     
     if (editorEl) {

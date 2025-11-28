@@ -77,37 +77,6 @@ export interface HandleConfig {
 export type PrimitiveFieldValue = string | number | boolean | null;
 
 /**
- * Field value discriminated union for type-safe value handling
- * Use this when you need to know the exact type at compile time
- */
-export type FieldValue = 
-  | { type: 'string'; value: string }
-  | { type: 'number'; value: number }
-  | { type: 'boolean'; value: boolean }
-  | { type: 'null'; value: null };
-
-/**
- * Configuration for node header customization
- */
-export interface NodeHeaderConfig {
-  show?: boolean; // Whether to show the header (default: true)
-  icon?: string; // Icon to display in header
-  className?: string; // Custom CSS classes for header
-  bgColor?: string; // Background color (CSS color string)
-  textColor?: string; // Text color (CSS color string)
-  showMinimize?: boolean; // Show minimize button (future)
-}
-
-/**
- * Configuration for node footer
- */
-export interface NodeFooterConfig {
-  show?: boolean; // Whether to show footer
-  text?: string; // Footer text
-  className?: string; // Custom CSS classes
-}
-
-/**
  * Configuration for node styling
  */
 export interface NodeStyleConfig {
@@ -133,7 +102,7 @@ export interface ValidationConfig {
 export interface FieldCondition {
   field: string; // Field to check
   operator: "equals" | "notEquals" | "greaterThan" | "lessThan" | "contains";
-  value: FieldValue; // Value to compare against
+  value: PrimitiveFieldValue; // Value to compare against
 }
 
 /**
@@ -148,43 +117,6 @@ export interface FieldConfig {
   className?: string; // Custom CSS classes
 }
 
-export interface CustomNodeData extends Record<string, unknown> {
-  label: string;
-  
-  // Three-layer grid system (required)
-  grid: NodeGrid;
-  
-  // Field values
-  values?: Record<string, PrimitiveFieldValue>;
-  
-  // Layout configuration
-  handleType?: "base" | "button" | "labeled"; // Global handle type
-  inputHandleType?: "base" | "button" | "labeled"; // Input-specific handle type
-  outputHandleType?: "base" | "button" | "labeled"; // Output-specific handle type
-  
-  // Enhanced configuration options
-  header?: NodeHeaderConfig; // Header customization
-  footer?: NodeFooterConfig; // Footer configuration
-  style?: NodeStyleConfig; // Style customization
-  validation?: ValidationConfig; // Validation settings
-  fieldConfigs?: Record<string, FieldConfig>; // Per-field configuration
-  description?: string; // Node description (shown as tooltip or in header)
-  category?: string; // Node category for organization
-  icon?: string; // Node icon (fallback if not in header config)
-  
-  // Behavior flags
-  collapsible?: boolean; // Whether the node can be collapsed (future)
-  resizable?: boolean; // Whether the node is resizable (future)
-}
-
-export interface NodeTemplate {
-  type: string;
-  label: string;
-  description?: string;
-  icon?: string;
-  defaultData: CustomNodeData;
-}
-
 export interface ContextMenuState {
   id: string;
   type: "node" | "edge";
@@ -193,29 +125,48 @@ export interface ContextMenuState {
 }
 
 // =============================================================================
-// NEW ARCHITECTURE: Template + Instance Split
+// CORE ARCHITECTURE: Template + Instance Split
 // =============================================================================
 
 /**
+ * FieldValue - Alias for primitive field values
+ */
+export type FieldValue = PrimitiveFieldValue;
+
+/**
  * NodeDefinition - Template-level visual structure (immutable, shared)
+ * Defines HOW a node looks
  * Stored once per node type, referenced by many instances
  */
 export interface NodeDefinition {
-  grid: NodeGrid;
-  style?: NodeStyleConfig;
+  grid: NodeGrid;                        // Three-layer grid structure
+  style?: NodeStyleConfig;               // Optional styling
 }
 
 /**
  * NodeTemplate - Complete node type definition
  * Registered once, used to create many node instances
  */
-export interface NodeTemplateV2 {
+export interface NodeTemplate {
   type: string;                          // Unique type identifier
   label: string;                         // Display name
   description?: string;                  // Description
   icon?: string;                         // Icon (emoji or path)
-  definition: NodeDefinition;            // Visual structure
-  defaultValues?: Record<string, FieldValue>; // Default field values
+  category?: string;                     // Category for organization
+  definition: NodeDefinition;            // Visual structure (grid + style)
+  defaultValues: Record<string, PrimitiveFieldValue>; // Default field values
+}
+
+/**
+ * NodeInstance - Instance-level data (mutable, per-node)
+ * Defines WHAT values a specific node instance has
+ * This is synced with Python
+ */
+export interface NodeInstance {
+  id: string;                            // Unique instance ID
+  type: string;                          // References a NodeTemplate.type
+  position: { x: number; y: number };    // Position in canvas
+  values: Record<string, PrimitiveFieldValue>; // Field values
 }
 
 /**
@@ -228,4 +179,4 @@ export type NodesDict = Record<string, Node>;
  * NodeValues - Field values keyed by node ID
  * Synced separately from node structure for efficiency
  */
-export type NodeValues = Record<string, Record<string, FieldValue>>;
+export type NodeValues = Record<string, Record<string, PrimitiveFieldValue>>;

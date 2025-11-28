@@ -99,9 +99,7 @@ def __(BasicParams, JsonSchemaNodeWidget, node_builder):
 
     minimal_node = JsonSchemaNodeWidget.from_pydantic(
         BasicParams,
-        **minimal_config,
-        inputs=[{"id": "in", "label": "Input"}],
-        outputs=[{"id": "out", "label": "Output"}]
+        **minimal_config
     )
 
     minimal_node
@@ -160,9 +158,7 @@ def __(BaseModel, Field, JsonSchemaNodeWidget, node_builder):
 
     processing_node = JsonSchemaNodeWidget.from_pydantic(
         ProcessingParams,
-        **processing_config,
-        inputs=[{"id": "data", "label": "Data"}],
-        outputs=[{"id": "result", "label": "Result"}]
+        **processing_config
     )
 
     processing_node
@@ -187,22 +183,14 @@ def __(BasicParams, JsonSchemaNodeWidget, mo, node_builder):
     source_config = node_builder.create_source_node("Data Source", icon="📥")
     source_node = JsonSchemaNodeWidget.from_pydantic(
         BasicParams,
-        **source_config,
-        outputs=[
-            {"id": "data", "label": "Data Stream"},
-            {"id": "metadata", "label": "Metadata"}
-        ]
+        **source_config
     )
 
     # Sink node (red theme)
     sink_config = node_builder.create_sink_node("Data Export", icon="📤")
     sink_node = JsonSchemaNodeWidget.from_pydantic(
         BasicParams,
-        **sink_config,
-        inputs=[
-            {"id": "data", "label": "Data Stream"},
-            {"id": "config", "label": "Config"}
-        ]
+        **sink_config
     )
 
     mo.hstack([source_node, sink_node], justify="space-around")
@@ -392,8 +380,7 @@ def __(BaseModel, Field, JsonSchemaNodeWidget, node_builder):
 
     viz_node = JsonSchemaNodeWidget.from_pydantic(
         VizParams,
-        **viz_config,
-        inputs=[{"id": "data", "label": "Data Source"}]
+        **viz_config
     )
 
     viz_node

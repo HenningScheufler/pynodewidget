@@ -2,6 +2,7 @@ import React from "react";
 import * as v from "valibot";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { PrimitiveFieldValue } from "@/types/schema";
+import { useNodeDataContext } from "@/contexts/NodeDataContext";
 
 // Valibot schema for BoolField component
 export const BoolFieldSchema = v.object({
@@ -27,10 +28,15 @@ export function BooleanField(props: BooleanFieldComponentProps) {
   // If schema component is passed, render with label
   if ('component' in props) {
     const { component, onValueChange } = props;
+    const context = useNodeDataContext();
+    
+    // Get value from nodeData.values if context available, fallback to component.value
+    const currentValue = (context?.nodeData.values?.[component.id] as boolean) ?? component.value ?? false;
+    
     return (
       <div className="component-bool-field flex items-center gap-2">
         <Checkbox
-          checked={component.value || false}
+          checked={currentValue}
           onCheckedChange={(checked) => onValueChange?.(component.id, checked === true)}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}

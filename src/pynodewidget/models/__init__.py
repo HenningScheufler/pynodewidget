@@ -34,18 +34,16 @@ from .grid import (
 
 # Node configuration
 from .node import (
-    NodeHeader,
-    NodeFooter,
     NodeStyle,
     NodeHandle,
-    CustomNodeData,
+    NodeDefinition,
     NodeTemplate,
 )
 
 # Fix forward references for recursive models
 GridLayoutComponent.model_rebuild()
 GridCell.model_rebuild()
-CustomNodeData.model_rebuild()
+NodeDefinition.model_rebuild()
 
 __all__ = [
     # Components
@@ -71,10 +69,8 @@ __all__ = [
     "GridCell",
     "NodeGrid",
     # Node
-    "NodeHeader",
-    "NodeFooter",
     "NodeStyle",
     "NodeHandle",
-    "CustomNodeData",
+    "NodeDefinition",
     "NodeTemplate",
 ]

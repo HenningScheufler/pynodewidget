@@ -2,6 +2,7 @@ import React from "react";
 import * as v from "valibot";
 import { Input } from "@/components/ui/input";
 import type { PrimitiveFieldValue } from "@/types/schema";
+import { useNodeDataContext } from "@/contexts/NodeDataContext";
 
 // Valibot schema for NumberField component
 export const NumberFieldSchema = v.object({
@@ -31,12 +32,17 @@ export function NumberField(props: NumberFieldComponentProps) {
   // If schema component is passed, render with label
   if ('component' in props) {
     const { component, onValueChange } = props;
+    const context = useNodeDataContext();
+    
+    // Get value from nodeData.values if context available, fallback to component.value
+    const currentValue = (context?.nodeData.values?.[component.id] as number) ?? component.value ?? 0;
+    
     return (
       <div className="component-number-field">
         <label className="text-xs text-gray-600 mb-1">{component.label}</label>
         <Input
           type="number"
-          value={component.value ?? 0}
+          value={currentValue}
           step="any"
           onChange={(e) => onValueChange?.(component.id, Number(e.target.value))}
           onMouseDownCapture={(e) => e.stopPropagation()}

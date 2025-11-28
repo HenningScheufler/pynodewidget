@@ -9,7 +9,8 @@
  * 5. Better organization and documentation
  */
 
-import type { NodeData } from './types';
+import type { NodeTemplate, NodeDefinition } from './types';
+import type { NodeData } from '../src/contexts/NodeDataContext';
 import type { 
   NodeGrid, 
   GridCell, 
@@ -249,18 +250,6 @@ function createDivider(
   return { type: 'divider', id, orientation };
 }
 
-/**
- * Creates a standard header configuration
- */
-function createHeaderConfig(
-  icon: string,
-  bgColor: string,
-  show = true,
-  textColor = COLORS.white
-) {
-  return { show, icon, bgColor, textColor };
-}
-
 // =============================================================================
 // BASE NODE DATA
 // =============================================================================
@@ -290,10 +279,13 @@ export const nodeTemplatesByHandleType = {
     label: 'Base Handle Node',
     icon: '⚙️',
     description: 'Node with base handle style',
-    defaultData: { 
-      ...sampleNodeData, 
-      handleType: 'base' as const,
+    definition: { 
       grid: createThreeColumnGrid()
+    },
+    defaultValues: {
+      name: 'processor',
+      count: 10,
+      enabled: true
     }
   },
   button: {
@@ -301,10 +293,13 @@ export const nodeTemplatesByHandleType = {
     label: 'Button Handle Node',
     icon: '🔘',
     description: 'Node with button handle style',
-    defaultData: { 
-      ...sampleNodeData, 
-      handleType: 'button' as const,
+    definition: { 
       grid: createThreeColumnGrid()
+    },
+    defaultValues: {
+      name: 'processor',
+      count: 10,
+      enabled: true
     }
   },
   labeled: {
@@ -312,10 +307,13 @@ export const nodeTemplatesByHandleType = {
     label: 'Labeled Handle Node',
     icon: '🏷️',
     description: 'Node with labeled handle style',
-    defaultData: { 
-      ...sampleNodeData, 
-      handleType: 'labeled' as const,
+    definition: { 
       grid: createThreeColumnGrid()
+    },
+    defaultValues: {
+      name: 'processor',
+      count: 10,
+      enabled: true
     }
   }
 } as const;
@@ -919,15 +917,14 @@ function createSidebarGridLayout(): NodeGrid {
 // NODE EXAMPLES
 // =============================================================================
 
-export const nodeExamples = [
+export const nodeExamples: NodeTemplate[] = [
   // Simple starter example
   {
     type: 'simple_node',
     label: '✨ Simple Node',
     icon: '✨',
     description: 'Minimal example: single text field',
-    defaultData: {
-      label: 'Simple Node',
+    definition: {
       grid: {
         rows: ['1fr'],
         columns: ['1fr'],
@@ -942,11 +939,10 @@ export const nodeExamples = [
             ]
           ),
         ],
-      },
-      header: createHeaderConfig('✨', COLORS.blue),
-      values: {
-        message: 'Hello World!'
       }
+    },
+    defaultValues: {
+      message: 'Hello World!'
     }
   },
   // Horizontal layout
@@ -955,15 +951,13 @@ export const nodeExamples = [
     label: '↔️ Horizontal',
     icon: '↔️',
     description: 'Three columns: inputs | fields | outputs',
-    defaultData: {
-      label: 'Horizontal Node',
-      grid: createHorizontalGridLayout(),
-      header: createHeaderConfig('↔️', COLORS.green),
-      values: {
-        name: 'processor',
-        count: 10,
-        enabled: true
-      }
+    definition: {
+      grid: createHorizontalGridLayout()
+    },
+    defaultValues: {
+      name: 'processor',
+      count: 10,
+      enabled: true
     }
   },
   // Vertical layout
@@ -972,15 +966,13 @@ export const nodeExamples = [
     label: '↕️ Vertical',
     icon: '↕️',
     description: 'Stacked: inputs / fields / outputs',
-    defaultData: {
-      label: 'Vertical Node',
-      grid: createVerticalGridLayout(),
-      header: createHeaderConfig('↕️', COLORS.cyan),
-      values: {
-        name: 'processor',
-        count: 10,
-        enabled: true
-      }
+    definition: {
+      grid: createVerticalGridLayout()
+    },
+    defaultValues: {
+      name: 'processor',
+      count: 10,
+      enabled: true
     }
   },
   // Component-based with custom header
@@ -989,11 +981,10 @@ export const nodeExamples = [
     label: '🎨 Header & Body',
     icon: '🎨',
     description: 'Custom header with handles and form body',
-    defaultData: {
-      label: 'Transform Node',
-      grid: createHeaderBodyGrid(),
-      header: { show: false },
-    }
+    definition: {
+      grid: createHeaderBodyGrid()
+    },
+    defaultValues: {}
   },
   // Complex with nested components
   {
@@ -1001,10 +992,9 @@ export const nodeExamples = [
     label: '🚀 Complex Layout',
     icon: '🚀',
     description: 'Advanced layout with header, footer, and buttons',
-    defaultData: {
-      label: 'Advanced Processor',
-      grid: createComplexGrid(),
-      header: { show: false },
-    }
+    definition: {
+      grid: createComplexGrid()
+    },
+    defaultValues: {}
   },
 ];

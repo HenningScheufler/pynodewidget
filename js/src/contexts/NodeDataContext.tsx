@@ -8,14 +8,25 @@
  */
 
 import React from "react";
-import type { CustomNodeData, PrimitiveFieldValue } from "../types/schema";
+import type { NodeGrid, NodeStyleConfig, PrimitiveFieldValue } from "../types/schema";
+
+/**
+ * Node data interface for runtime rendering
+ * Contains merged template definition + instance values
+ */
+export interface NodeData {
+  label: string;
+  grid: NodeGrid;
+  style?: NodeStyleConfig;
+  values: Record<string, PrimitiveFieldValue>;
+}
 
 /**
  * Context value interface
  */
 export interface NodeDataContextValue {
   nodeId: string;
-  nodeData: CustomNodeData;
+  nodeData: NodeData;
   onValueChange: (key: string, value: PrimitiveFieldValue) => void;
 }
 
@@ -26,12 +37,9 @@ export const NodeDataContext = React.createContext<NodeDataContextValue | null>(
 
 /**
  * Hook to access node data context
- * Throws if used outside of NodeDataContext.Provider
+ * Returns null if used outside of NodeDataContext.Provider (for testing)
+ * In production, context should always be available
  */
-export function useNodeDataContext(): NodeDataContextValue {
-  const context = React.useContext(NodeDataContext);
-  if (!context) {
-    throw new Error('useNodeDataContext must be used within NodeDataContext.Provider');
-  }
-  return context;
+export function useNodeDataContext(): NodeDataContextValue | null {
+  return React.useContext(NodeDataContext);
 }

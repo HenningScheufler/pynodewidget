@@ -179,7 +179,7 @@ class NodeMetadata:
             Dictionary representation of node metadata
         """
         from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
-        from .models import CustomNodeData, NodeTemplate
+        from .models import NodeDefinition, NodeTemplate
         
         # Get grid layout if specified, otherwise create default vertical grid
         grid = self.grid_layout
@@ -188,16 +188,21 @@ class NodeMetadata:
             field_components = json_schema_to_components(self.parameters_schema, {})
             grid = create_vertical_stack_grid(middle_components=field_components)
         
-        # Build and validate default data using Pydantic
-        default_data_dict = {
-            "label": self.label,
+        # Extract default values from schema
+        default_values = {}
+        if "properties" in self.parameters_schema:
+            for key, prop in self.parameters_schema["properties"].items():
+                if "default" in prop:
+                    default_values[key] = prop["default"]
+        
+        # Build NodeDefinition (visual structure only)
+        definition_dict = {
             "grid": grid,
-            "values": {},
         }
         
         try:
-            # Validate the default data structure
-            default_data = CustomNodeData(**default_data_dict)
+            # Validate the definition structure
+            definition = NodeDefinition(**definition_dict)
             
             # Create and validate the full template
             template_dict = {
@@ -206,7 +211,8 @@ class NodeMetadata:
                 "icon": self.icon,
                 "category": self.category,
                 "description": self.description,
-                "defaultData": default_data.model_dump()
+                "definition": definition.model_dump(),
+                "defaultValues": default_values
             }
             template = NodeTemplate(**template_dict)
             

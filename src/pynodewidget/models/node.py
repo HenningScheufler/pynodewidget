@@ -7,22 +7,6 @@ if TYPE_CHECKING:
     from .grid import NodeGrid
 
 
-class NodeHeader(BaseModel):
-    """Node header configuration."""
-    show: bool = Field(default=True, description="Whether to show the header")
-    icon: Optional[str] = Field(None, description="Unicode emoji or icon")
-    bgColor: Optional[str] = Field(None, description="Background color (CSS color)")
-    textColor: Optional[str] = Field(None, description="Text color (CSS color)")
-    className: Optional[str] = Field(None, description="Additional CSS classes")
-
-
-class NodeFooter(BaseModel):
-    """Node footer configuration."""
-    show: bool = Field(default=False, description="Whether to show the footer")
-    text: Optional[str] = Field(None, description="Footer text")
-    className: Optional[str] = Field(None, description="CSS classes for styling")
-
-
 class NodeStyle(BaseModel):
     """Node styling configuration."""
     minWidth: Optional[str] = Field(None, description="Minimum node width (CSS value)")
@@ -41,40 +25,31 @@ class NodeHandle(BaseModel):
     )
 
 
-class CustomNodeData(BaseModel):
-    """Complete node data configuration with grid layout support.
+class NodeDefinition(BaseModel):
+    """Template-level visual structure (immutable, shared across instances).
     
-    This is the main model that defines a node's complete structure,
-    including its layout, styling, and handles.
+    Defines HOW a node looks - its layout and styling.
+    This is stored once per node type and referenced by many instances.
     
     Uses the three-layer grid system (NodeGrid → GridCell → Components).
-    
-    IMPORTANT: All nodes MUST use the grid-based architecture:
-    - Define handles using grid.cells with HandleComponent (BaseHandle, ButtonHandle, LabeledHandle)
-    - Define fields using grid.cells with FieldComponent (TextField, NumberField, etc.)
     """
-    label: str = Field(..., description="Node display label")
-    
-    # Three-layer grid system (REQUIRED)
     grid: 'NodeGrid' = Field(..., description="Three-layer grid layout (NodeGrid → GridCell → Components)")
-    
-    # Optional fields
-    values: Dict[str, Any] = Field(default_factory=dict, description="Current parameter values")
-    handleType: Literal["base", "button", "labeled"] = Field(
-        default="base",
-        description="Default handle type for all handles"
-    )
-    header: Optional[NodeHeader] = Field(None, description="Header configuration")
-    footer: Optional[NodeFooter] = Field(None, description="Footer configuration")
     style: Optional[NodeStyle] = Field(None, description="Styling configuration")
-    description: Optional[str] = Field(None, description="Node description")
 
 
 class NodeTemplate(BaseModel):
-    """Node template for registering node types."""
+    """Complete node type definition.
+    
+    Registered once, used to create many node instances.
+    Separates template (structure) from instance (data).
+    """
     type: str = Field(..., description="Unique node type identifier")
     label: str = Field(..., description="Display label for node type")
-    icon: str = Field(default="", description="Unicode emoji or icon")
     description: str = Field(default="", description="Node description")
+    icon: str = Field(default="", description="Unicode emoji or icon")
     category: str = Field(default="general", description="Node category")
-    defaultData: CustomNodeData = Field(..., description="Default node configuration")
+    definition: NodeDefinition = Field(..., description="Visual structure (grid + style)")
+    defaultValues: Dict[str, Any] = Field(
+        default_factory=dict, 
+        description="Default field values for new instances"
+    )

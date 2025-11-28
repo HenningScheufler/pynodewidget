@@ -4,7 +4,8 @@
  */
 
 import type { Node } from "@xyflow/react";
-import type { CustomNodeData, PrimitiveFieldValue, ComponentType } from "../types/schema";
+import type { NodeData } from "../contexts/NodeDataContext";
+import type { PrimitiveFieldValue, ComponentType } from "../types/schema";
 
 export class NodeDataService {
   /**
@@ -25,7 +26,7 @@ export class NodeDataService {
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         return {
           ...node,
           data: {
@@ -49,7 +50,7 @@ export class NodeDataService {
    * @returns True if the field/component is marked as required
    */
   static isFieldRequired(node: Node, fieldKey: string): boolean {
-    const data = node.data as unknown as CustomNodeData;
+    const data = node.data as unknown as NodeData;
     
     // Search through grid cells for a component with matching ID
     if (!data.grid?.cells) {
@@ -75,7 +76,7 @@ export class NodeDataService {
    * @returns Object containing all field values
    */
   static getAllValues(node: Node): Record<string, PrimitiveFieldValue> {
-    const data = node.data as unknown as CustomNodeData;
+    const data = node.data as unknown as NodeData;
     return data.values || {};
   }
 
@@ -94,7 +95,7 @@ export class NodeDataService {
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         return {
           ...node,
           data: {

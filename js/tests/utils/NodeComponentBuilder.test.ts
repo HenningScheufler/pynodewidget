@@ -1,34 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { NodeComponentBuilder, buildNodeTypes } from '../../src/utils/NodeComponentBuilder';
-import type { CustomNodeData, NodeTemplate } from '../../src/types/schema';
+import type { NodeTemplate, NodeGrid } from '../../src/types/schema';
 
 describe('NodeComponentBuilder', () => {
-  const createMinimalSchema = (): CustomNodeData => ({
-    label: 'Test Node',
-    grid: {
-      rows: ['1fr'],
-      columns: ['1fr'],
-      cells: []
-    },
-    values: {},
+  const createMinimalGrid = (): NodeGrid => ({
+    rows: ['1fr'],
+    columns: ['1fr'],
+    cells: []
   });
 
   describe('constructor', () => {
     it('should create a builder instance with valid schema', () => {
-      const schema = createMinimalSchema();
-      const builder = new NodeComponentBuilder(schema);
+      const grid = createMinimalGrid();
+      const builder = new NodeComponentBuilder(grid);
 
       expect(builder).toBeInstanceOf(NodeComponentBuilder);
     });
 
     it('should require grid', () => {
-      const schema = {
-        label: 'Test',
-        values: {},
-      } as any; // Intentionally missing grid to test error
+      const grid = null as any; // Intentionally null to test error
 
       // Should throw because grid is required
-      expect(() => new NodeComponentBuilder(schema)).toThrow("'grid' property is required in schema. The old 'gridLayout' system has been removed.");
+      expect(() => new NodeComponentBuilder(grid)).toThrow("'grid' property is required in node definition.");
     });
 
     it('should accept different grid layout types', () => {
@@ -39,21 +32,15 @@ describe('NodeComponentBuilder', () => {
       ];
 
       layouts.forEach((grid) => {
-        const schema: CustomNodeData = {
-          label: 'Test',
-          grid,
-          values: {},
-        };
-
-        expect(() => new NodeComponentBuilder(schema)).not.toThrow();
+        expect(() => new NodeComponentBuilder(grid)).not.toThrow();
       });
     });
   });
 
   describe('buildComponent', () => {
     it('should build a React component', () => {
-      const schema = createMinimalSchema();
-      const builder = new NodeComponentBuilder(schema);
+      const grid = createMinimalGrid();
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       // React.memo returns an object (React component), not a plain function
@@ -62,7 +49,7 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('should build component with style configuration', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Style Test',
         grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         style: {
@@ -74,14 +61,14 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with numeric width values', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Numeric Width',
         grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         style: {
@@ -91,7 +78,7 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
@@ -101,14 +88,14 @@ describe('NodeComponentBuilder', () => {
       const handleTypes: Array<'base' | 'button' | 'labeled'> = ['base', 'button', 'labeled'];
 
       handleTypes.forEach((handleType) => {
-        const schema: CustomNodeData = {
+        const grid: NodeGrid = {
           label: 'Handle Test',
           grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           handleType,
           values: {},
         };
 
-        const builder = new NodeComponentBuilder(schema);
+        const builder = new NodeComponentBuilder(grid);
         const Component = builder.buildComponent();
 
         expect(Component).toBeDefined();
@@ -116,7 +103,7 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('should build component with input and output handle types', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Handle Test',
         grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         handleType: 'base',
@@ -125,14 +112,14 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with inputs and outputs', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Handles Test',
         grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         inputs: [
@@ -145,14 +132,14 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with validation config', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Validation Test',
         grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         validation: {
@@ -163,14 +150,14 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with field configurations', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Field Config Test',
         grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         fieldConfigs: {
@@ -181,7 +168,7 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
@@ -197,14 +184,14 @@ describe('NodeComponentBuilder', () => {
       ];
 
       shadows.forEach((shadow) => {
-        const schema: CustomNodeData = {
+        const grid: NodeGrid = {
           label: 'Shadow Test',
           grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           style: { shadow },
           values: {},
         };
 
-        const builder = new NodeComponentBuilder(schema);
+        const builder = new NodeComponentBuilder(grid);
         const Component = builder.buildComponent();
 
         expect(Component).toBeDefined();
@@ -212,7 +199,7 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('should build component with complex configuration', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Complex Node',
         grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         handleType: 'button',
@@ -254,7 +241,7 @@ describe('NodeComponentBuilder', () => {
         },
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
@@ -263,17 +250,17 @@ describe('NodeComponentBuilder', () => {
 
   describe('static buildComponent', () => {
     it('should build component directly from schema', () => {
-      const schema = createMinimalSchema();
+      const schema = createMinimalGrid();
       const Component = NodeComponentBuilder.buildComponent(schema);
 
       expect(Component).toBeDefined();
     });
 
     it('should produce same result as instance method', () => {
-      const schema = createMinimalSchema();
+      const grid = createMinimalGrid();
       
-      const Component1 = NodeComponentBuilder.buildComponent(schema);
-      const builder = new NodeComponentBuilder(schema);
+      const Component1 = NodeComponentBuilder.buildComponent(grid);
+      const builder = new NodeComponentBuilder(grid);
       const Component2 = builder.buildComponent();
 
       expect(typeof Component1).toBe(typeof Component2);
@@ -285,11 +272,10 @@ describe('buildNodeTypes', () => {
   const createTemplate = (type: string, label: string): NodeTemplate => ({
     type,
     label,
-    defaultData: {
-      label,
+    definition: {
       grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
-      values: {},
     },
+    defaultValues: {},
   });
 
   it('should build node types from templates', () => {
@@ -331,29 +317,14 @@ describe('buildNodeTypes', () => {
         label: 'Advanced Node',
         description: 'An advanced node',
         icon: '🚀',
-        defaultData: {
-          label: 'Advanced',
+        definition: {
           grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
-          handleType: 'button',
-          header: {
-            show: true,
-            icon: '🚀',
-            className: 'bg-purple-600',
-          },
-          footer: {
-            show: true,
-            text: 'Advanced mode',
-          },
           style: {
             minWidth: '300px',
             shadow: 'xl',
           },
-          validation: {
-            showErrors: true,
-            errorPosition: 'inline',
-          },
-          values: {},
         },
+        defaultValues: {},
       },
     ];
 
@@ -367,16 +338,15 @@ describe('buildNodeTypes', () => {
       {
         type: 'invalid',
         label: 'Invalid',
-        defaultData: {
-          label: 'Invalid',
-          // Missing grid - should throw
-          values: {},
-        } as any, // Intentionally invalid to test error handling
+        definition: {
+          grid: null as any, // Intentionally invalid to test error handling
+        },
+        defaultValues: {},
       },
     ];
 
     // Should throw because grid is required
-    expect(() => buildNodeTypes(templates)).toThrow("'grid' property is required in schema. The old 'gridLayout' system has been removed.");
+    expect(() => buildNodeTypes(templates)).toThrow("'grid' property is required in node definition.");
   });
 
   it('should handle templates with all layout types', () => {
@@ -384,11 +354,11 @@ describe('buildNodeTypes', () => {
       createTemplate('horizontal', 'Horizontal'),
       {
         ...createTemplate('vertical', 'Vertical'),
-        defaultData: { ...createTemplate('vertical', 'Vertical').defaultData, grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
+        definition: { grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
       },
       {
         ...createTemplate('compact', 'Compact'),
-        defaultData: { ...createTemplate('compact', 'Compact').defaultData, grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
+        definition: { grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
       },
     ];
 
@@ -405,32 +375,26 @@ describe('buildNodeTypes', () => {
       {
         type: 'base-handles',
         label: 'Base',
-        defaultData: {
-          label: 'Base',
+        definition: {
           grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
-          handleType: 'base',
-          values: {},
         },
+        defaultValues: {},
       },
       {
         type: 'button-handles',
         label: 'Button',
-        defaultData: {
-          label: 'Button',
+        definition: {
           grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
-          handleType: 'button',
-          values: {},
         },
+        defaultValues: {},
       },
       {
         type: 'labeled-handles',
         label: 'Labeled',
-        defaultData: {
-          label: 'Labeled',
+        definition: {
           grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
-          handleType: 'labeled',
-          values: {},
         },
+        defaultValues: {},
       },
     ];
 

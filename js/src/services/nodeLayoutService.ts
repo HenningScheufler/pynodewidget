@@ -1,10 +1,11 @@
 /**
- * Service for managing node layout and handle type operations.
- * Provides utilities for updating node layouts and handle configurations.
+ * Service for managing node layout operations.
+ * Handles input/output handle management and validation.
  */
 
 import type { Node } from "@xyflow/react";
-import type { CustomNodeData, HandleConfig } from "../types/schema";
+import type { NodeData } from "../contexts/NodeDataContext";
+import type { HandleConfig } from "../types/schema";
 import type { HandleType } from "@/components/handles/HandleFactory";
 
 export class NodeLayoutService {
@@ -23,7 +24,7 @@ export class NodeLayoutService {
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         return {
           ...node,
           data: {
@@ -55,7 +56,7 @@ export class NodeLayoutService {
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         const handleKey = isInput ? "inputs" : "outputs";
         const handles = currentData[handleKey] || [];
         
@@ -88,7 +89,7 @@ export class NodeLayoutService {
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         const inputs = currentData.inputs || [];
         
         return {
@@ -121,7 +122,7 @@ export class NodeLayoutService {
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         const outputs = currentData.outputs || [];
         
         return {
@@ -154,7 +155,7 @@ export class NodeLayoutService {
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         const inputs = currentData.inputs || [];
         const outputs = currentData.outputs || [];
         
@@ -190,7 +191,7 @@ export class NodeLayoutService {
     handleId: string,
     isInput: boolean
   ): HandleType {
-    const currentData = node.data as unknown as CustomNodeData;
+    const currentData = node.data as unknown as NodeData;
     const handleKey = isInput ? "inputs" : "outputs";
     const handles = currentData[handleKey] || [];
     const handle = handles.find((h: HandleConfig) => h.id === handleId);
@@ -205,7 +206,7 @@ export class NodeLayoutService {
    * @returns The layout type, or "horizontal" as default
    */
   static getLayoutType(node: Node): string {
-    const currentData = node.data as unknown as CustomNodeData;
+    const currentData = node.data as unknown as NodeData;
     return currentData.layoutType || "horizontal";
   }
 }

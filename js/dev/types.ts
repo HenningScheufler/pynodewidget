@@ -1,26 +1,12 @@
-import type { CustomNodeData } from '../src/types/schema';
+import type { NodeTemplate, NodeDefinition } from '../src/types/schema';
+import type { NodeData } from '../src/contexts/NodeDataContext';
 
-export interface GridLayoutExample {
-  type: string;
-  label: string;
-  icon: string;
-  description: string;
-  defaultData: CustomNodeData;
-}
+// Re-export NodeTemplate for dev convenience
+export type { NodeTemplate, NodeDefinition, NodeData };
 
-export interface HandleTypeTemplate {
-  type: string;
-  label: string;
-  icon: string;
-  description: string;
-  defaultData: CustomNodeData;
-}
-
-// Re-export CustomNodeData as NodeData for dev convenience
-export type NodeData = CustomNodeData;
-
+// Use NodeTemplate for both layout and handle templates
 export interface Combination {
-  layout: GridLayoutExample;
-  handle: HandleTypeTemplate;
+  layout: NodeTemplate;
+  handle: NodeTemplate;
   label: string;
 }

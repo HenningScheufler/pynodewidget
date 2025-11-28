@@ -84,11 +84,8 @@ export type {
   GridCoordinates,
   CellLayout,
   // Node types
-  CustomNodeData, 
   NodeTemplate,
   HandleConfig,
-  NodeHeaderConfig,
-  NodeFooterConfig,
   NodeStyleConfig,
   ValidationConfig,
   FieldConfig,
@@ -96,10 +93,10 @@ export type {
   ContextMenuState,
   // New architecture types
   NodeDefinition,
-  NodeTemplateV2,
   NodesDict,
   NodeValues,
 } from "./types/schema";
+export { type NodeData } from "./contexts/NodeDataContext";
 
 // Backwards compatibility: export setNodes as alias to setNodesDict
 export const useSetNodes = useSetNodesDict;
@@ -130,6 +127,7 @@ function NodeFlowComponent() {
   }, [nodeTemplates]);
   
   // Merge template definition + values into nodes for rendering
+  // NEW: Clean separation - template.definition contains visual structure
   const nodesWithData = React.useMemo(() => {
     if (!nodeValues || Object.keys(nodeValues).length === 0) return nodes;
     
@@ -142,12 +140,14 @@ function NodeFlowComponent() {
         return node;
       }
       
+      // Merge template definition (grid + style) with instance values
       return {
         ...node,
         data: {
           ...node.data,
-          ...template.defaultData,  // Merge template data (includes grid, label, etc.)
-          values                     // Add field values
+          label: template.label,        // Template label
+          ...template.definition,        // Visual structure (grid, style)
+          values                         // Instance values (from node_values)
         }
       };
     });
@@ -210,11 +210,11 @@ function NodeFlowComponent() {
         [nodeId]: newNode
       }));
       
-      // Initialize values if template has defaults
-      if (template.defaultData?.values) {
+      // Initialize values from template's defaultValues
+      if (template.defaultValues && Object.keys(template.defaultValues).length > 0) {
         setNodeValues((prev) => ({
           ...prev,
-          [nodeId]: { ...template.defaultData.values }
+          [nodeId]: { ...template.defaultValues }
         }));
       }
     },

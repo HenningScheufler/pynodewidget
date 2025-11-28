@@ -1,37 +1,43 @@
 import { nodeTemplatesByHandleType, nodeExamples } from './constants';
-import type { CustomNodeData } from '../src/types/schema';
+import type { NodeTemplate } from '../src/types/schema';
 
-// Get default template data safely
-const getDefaultTemplate = () => nodeExamples[0]?.defaultData || {};
+// Get default template safely
+const getDefaultTemplate = () => nodeExamples[0] || {};
 
 /**
- * Validate that node data has the required grid structure
+ * Validate that node template has the required definition structure
  */
-function validateNodeHasGrid(data: any): data is CustomNodeData {
-  if (!data || typeof data !== 'object') {
+function validateNodeTemplate(template: any): template is NodeTemplate {
+  if (!template || typeof template !== 'object') {
     return false;
   }
   
-  // Must have grid field
-  if (!data.grid || typeof data.grid !== 'object') {
-    console.error('Node data missing required "grid" field:', data);
+  // Must have definition field
+  if (!template.definition || typeof template.definition !== 'object') {
+    console.error('Node template missing required "definition" field:', template);
+    return false;
+  }
+  
+  // Definition must have grid field
+  if (!template.definition.grid || typeof template.definition.grid !== 'object') {
+    console.error('Node definition missing "grid" field:', template.definition);
     return false;
   }
   
   // Grid must have cells array
-  if (!Array.isArray(data.grid.cells)) {
-    console.error('Node grid missing "cells" array:', data.grid);
+  if (!Array.isArray(template.definition.grid.cells)) {
+    console.error('Node grid missing "cells" array:', template.definition.grid);
     return false;
   }
   
   return true;
 }
 
-export const createMockModel = (templates: any[] = [getDefaultTemplate()], startIndex: number = 0) => {
-  // Validate all templates have grid structure
+export const createMockModel = (templates: NodeTemplate[] = [getDefaultTemplate()], startIndex: number = 0) => {
+  // Validate all templates have definition structure
   templates.forEach((template, index) => {
-    if (!validateNodeHasGrid(template)) {
-      throw new Error(`Template ${index} is missing required grid structure. All nodes must use grid+components architecture.`);
+    if (!validateNodeTemplate(template)) {
+      throw new Error(`Template ${index} is missing required definition structure. All nodes must use grid+components architecture.`);
     }
   });
   
@@ -45,21 +51,15 @@ export const createMockModel = (templates: any[] = [getDefaultTemplate()], start
       id: `node-${templateIndex}`,
       type: nodeType,
       position: { x: 250, y: 150 },
-      data: template
+      data: {
+        label: template.label,
+        ...template.definition,  // grid, style
+        values: template.defaultValues || {}
+      }
     };
   });
 
-  const nodeTemplates = templates.map((template, templateIndex) => {
-    const exampleIndex = startIndex + templateIndex;
-    const nodeType = nodeExamples[exampleIndex]?.type || `template-${exampleIndex}`;
-    return {
-      type: nodeType,
-      label: template.label || `Template ${exampleIndex}`,
-      icon: template.header?.icon || '⚙️',
-      description: template.description || '',
-      defaultData: template
-    };
-  });
+  const nodeTemplates = templates;
 
   return {
     nodes: sampleNodes,
@@ -73,11 +73,11 @@ export const createMockModel = (templates: any[] = [getDefaultTemplate()], start
       return (this as any)[key];
     },
     set(key: string, value: any) {
-      // Validate nodes have grid structure when being set
-      if (key === 'nodes' && Array.isArray(value)) {
-        value.forEach((node, index) => {
-          if (node.data && !validateNodeHasGrid(node.data)) {
-            throw new Error(`Node ${index} (id: ${node.id}) is missing required grid structure`);
+      // Validate templates have definition structure when being set
+      if (key === 'node_templates' && Array.isArray(value)) {
+        value.forEach((template, index) => {
+          if (!validateNodeTemplate(template)) {
+            throw new Error(`Template ${index} (type: ${template.type}) is missing required definition structure`);
           }
         });
       }

@@ -24,21 +24,17 @@ w1.add_node_type_from_schema(
     type_name="horizontal_node",
     label="Horizontal Layout",
     icon="↔️",
-    inputs=[
-        {"id": "input1", "label": "First Input"},
-        {"id": "input2", "label": "Second Input"}
-    ],
-    outputs=[
-        {"id": "output1", "label": "Result"},
-        {"id": "output2", "label": "Stats"}
-    ],
-    grid_layout=create_horizontal_grid_layout(),
-    handle_type="base",
-    header={
-        "show": True,
-        "bgColor": "#3b82f6",
-        "textColor": "#ffffff"
-    }
+    grid_layout=create_horizontal_grid_layout(
+        inputs=[
+            {"id": "input1", "label": "First Input"},
+            {"id": "input2", "label": "Second Input"}
+        ],
+        outputs=[
+            {"id": "output1", "label": "Result"},
+            {"id": "output2", "label": "Stats"}
+        ],
+        handle_type="base"
+    )
 )
 w1
 
@@ -57,15 +53,11 @@ w2.add_node_type_from_schema(
     type_name="vertical_node",
     label="Vertical Layout",
     icon="↕️",
-    inputs=[{"id": "prompt", "label": "Prompt"}],
-    outputs=[{"id": "response", "label": "Response"}],
-    grid_layout=create_vertical_grid_layout(),
-    handle_type="button",
-    header={
-        "show": True,
-        "bgColor": "#10b981",
-        "textColor": "#ffffff"
-    }
+    grid_layout=create_vertical_grid_layout(
+        inputs=[{"id": "prompt", "label": "Prompt"}],
+        outputs=[{"id": "response", "label": "Response"}],
+        handle_type="button"
+    )
 )
 w2
 
@@ -83,13 +75,7 @@ w3.add_node_type_from_schema(
     type_name="compact_node",
     label="Compact Layout",
     icon="⬜",
-    grid_layout=create_compact_grid_layout(),
-    handle_type="labeled",
-    header={
-        "show": True,
-        "bgColor": "#8b5cf6",
-        "textColor": "#ffffff"
-    }
+    grid_layout=create_compact_grid_layout()
 )
 w3
 
@@ -108,21 +94,18 @@ w4.add_node_type_from_schema(
     type_name="sidebar_node",
     label="Sidebar Layout",
     icon="📊",
-    inputs=[
-        {"id": "data", "label": "Data"},
-        {"id": "config", "label": "Config"}
-    ],
-    outputs=[
-        {"id": "processed", "label": "Processed"},
-        {"id": "metrics", "label": "Metrics"}
-    ],
-    grid_layout=create_sidebar_grid_layout(sidebar_width="80px"),
-    handle_type="base",
-    header={
-        "show": True,
-        "bgColor": "#ef4444",
-        "textColor": "#ffffff"
-    },
+    grid_layout=create_sidebar_grid_layout(
+        inputs=[
+            {"id": "data", "label": "Data"},
+            {"id": "config", "label": "Config"}
+        ],
+        outputs=[
+            {"id": "processed", "label": "Processed"},
+            {"id": "metrics", "label": "Metrics"}
+        ],
+        sidebar_width="80px",
+        handle_type="base"
+    ),
     style={
         "minWidth": "400px"
     }
@@ -144,15 +127,11 @@ w5.add_node_type_from_schema(
     type_name="two_column_node",
     label="Two-Column Layout",
     icon="⚡",
-    inputs=[{"id": "in1", "label": "Input"}],
-    outputs=[{"id": "out1", "label": "Output"}],
-    grid_layout=create_two_column_grid_layout(),
-    handle_type="button",
-    header={
-        "show": True,
-        "bgColor": "#f59e0b",
-        "textColor": "#ffffff"
-    }
+    grid_layout=create_two_column_grid_layout(
+        inputs=[{"id": "in1", "label": "Input"}],
+        outputs=[{"id": "out1", "label": "Output"}],
+        handle_type="button"
+    )
 )
 w5
 
@@ -168,10 +147,10 @@ w_all.add_node_type_from_schema(
     type_name="horizontal",
     label="Horizontal",
     icon="↔️",
-    inputs=[{"id": "in", "label": "In"}],
-    outputs=[{"id": "out", "label": "Out"}],
-    grid_layout=create_horizontal_grid_layout(),
-    header={"show": True, "bgColor": "#3b82f6", "textColor": "#fff"}
+    grid_layout=create_horizontal_grid_layout(
+        inputs=[{"id": "in", "label": "In"}],
+        outputs=[{"id": "out", "label": "Out"}]
+    )
 )
 
 w_all.add_node_type_from_schema(
@@ -181,10 +160,10 @@ w_all.add_node_type_from_schema(
     type_name="vertical",
     label="Vertical",
     icon="↕️",
-    inputs=[{"id": "in", "label": "In"}],
-    outputs=[{"id": "out", "label": "Out"}],
-    grid_layout=create_vertical_grid_layout(),
-    header={"show": True, "bgColor": "#10b981", "textColor": "#fff"}
+    grid_layout=create_vertical_grid_layout(
+        inputs=[{"id": "in", "label": "In"}],
+        outputs=[{"id": "out", "label": "Out"}]
+    )
 )
 
 w_all.add_node_type_from_schema(
@@ -194,8 +173,7 @@ w_all.add_node_type_from_schema(
     type_name="compact",
     label="Compact",
     icon="⬜",
-    grid_layout=create_compact_grid_layout(),
-    header={"show": True, "bgColor": "#8b5cf6", "textColor": "#fff"}
+    grid_layout=create_compact_grid_layout()
 )
 
 w_all

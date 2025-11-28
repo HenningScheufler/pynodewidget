@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { PrimitiveFieldValue } from "@/types/schema";
+import { useNodeDataContext } from "@/contexts/NodeDataContext";
 
 // Valibot schema for SelectField component
 export const SelectFieldSchema = v.object({
@@ -36,10 +37,15 @@ export function SelectField(props: SelectFieldComponentProps) {
   // If schema component is passed, render with label
   if ('component' in props) {
     const { component, onValueChange } = props;
+    const context = useNodeDataContext();
+    
+    // Get value from nodeData.values if context available, fallback to component.value
+    const currentValue = (context?.nodeData.values?.[component.id] as string) ?? component.value ?? "";
+    
     return (
       <div className="component-select-field">
         <label className="text-xs text-gray-600 mb-1">{component.label}</label>
-        <Select value={component.value || ""} onValueChange={(value) => onValueChange?.(component.id, value)}>
+        <Select value={currentValue} onValueChange={(value) => onValueChange?.(component.id, value)}>
           <SelectTrigger 
             className="h-8 text-xs"
             onMouseDown={(e) => e.stopPropagation()}

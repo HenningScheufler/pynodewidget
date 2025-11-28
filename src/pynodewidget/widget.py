@@ -194,8 +194,6 @@ class NodeFlowWidget(anywidget.AnyWidget):
             icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
             grid_layout: Grid layout configuration (use helpers from grid_layouts module).
                         If not provided, defaults to vertical layout with JSON schema fields.
-            header: Header configuration dict with 'show', 'icon', 'bgColor', 'textColor', etc.
-            footer: Footer configuration dict with 'show', 'text', 'className', etc.
             style: Style configuration dict with 'minWidth', 'maxWidth', 'shadow', etc.
             
         Example:
@@ -211,12 +209,11 @@ class NodeFlowWidget(anywidget.AnyWidget):
             ...         left_components=[BaseHandle(id="in1", label="Input", handle_type="input")],
             ...         center_components=[TextField(id="name", label="Name")],
             ...         right_components=[BaseHandle(id="out1", label="Output", handle_type="output")]
-            ...     ),
-            ...     header={"show": True, "bgColor": "#3b82f6", "textColor": "#ffffff"}
+            ...     )
             ... )
         """
         from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
-        from .models import CustomNodeData, NodeTemplate
+        from .models import NodeDefinition, NodeTemplate
         
         # Initialize default values from schema
         default_values = {}
@@ -230,30 +227,25 @@ class NodeFlowWidget(anywidget.AnyWidget):
             field_components = json_schema_to_components(json_schema, default_values)
             grid_layout = create_vertical_stack_grid(middle_components=field_components)
         
-        # Build default data with grid layout
-        default_data_dict = {
-            "label": label,
-            "grid": grid_layout,
-            "values": default_values
+        # Build NodeDefinition (visual structure only)
+        definition_dict = {
+            "grid": grid_layout
         }
         
-        # Add optional configurations
-        if header is not None:
-            default_data_dict["header"] = header
-        if footer is not None:
-            default_data_dict["footer"] = footer
+        # Add optional style configuration
         if style is not None:
-            default_data_dict["style"] = style
+            definition_dict["style"] = style
         
         # Validate using Pydantic models
         try:
-            default_data = CustomNodeData(**default_data_dict)
+            definition = NodeDefinition(**definition_dict)
             template_dict = {
                 "type": type_name,
                 "label": label,
                 "description": description,
                 "icon": icon,
-                "defaultData": default_data.model_dump()
+                "definition": definition.model_dump(),
+                "defaultValues": default_values
             }
             template = NodeTemplate(**template_dict)
             
