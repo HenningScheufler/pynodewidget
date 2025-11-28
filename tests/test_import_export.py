@@ -10,7 +10,7 @@ from pynodewidget import NodeFlowWidget
 def test_export_json():
     """Test exporting flow to JSON."""
     widget = NodeFlowWidget()
-    widget.nodes = [{"id": "1", "type": "test", "position": {"x": 0, "y": 0}}]
+    widget.nodes = {"1": {"id": "1", "type": "test", "position": {"x": 0, "y": 0}}}
     widget.edges = [{"id": "e1", "source": "1", "target": "2"}]
     widget.node_templates = [{"type": "test", "label": "Test"}]
     
@@ -37,7 +37,7 @@ def test_load_json():
     widget = NodeFlowWidget()
     
     test_data = {
-        "nodes": [{"id": "1", "type": "test", "position": {"x": 100, "y": 200}}],
+        "nodes": {"1": {"id": "1", "type": "test", "position": {"x": 100, "y": 200}}},
         "edges": [{"id": "e1", "source": "1", "target": "2"}],
         "viewport": {"x": 10, "y": 20, "zoom": 1.5},
         "node_templates": [{"type": "test", "label": "Test"}]
@@ -63,7 +63,7 @@ def test_load_json_without_templates():
     widget = NodeFlowWidget()
     
     test_data = {
-        "nodes": [{"id": "1"}],
+        "nodes": {"1": {"id": "1"}},
         "edges": []
     }
     
@@ -92,20 +92,18 @@ def test_complete_workflow():
         },
         type_name="processor",
         label="Processor",
-        icon="⚙️",
-        inputs=[{"id": "in", "label": "Input"}],
-        outputs=[{"id": "out", "label": "Output"}]
+        icon="⚙️"
     )
     
     # Simulate adding nodes
-    widget1.nodes = [
-        {
+    widget1.nodes = {
+        "node1": {
             "id": "node1",
             "type": "processor",
             "position": {"x": 100, "y": 100},
             "data": {"label": "Processor 1", "values": {"param": "test"}}
         }
-    ]
+    }
     
     # Export to temp file
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
@@ -120,7 +118,7 @@ def test_complete_workflow():
         
         # Verify data
         assert len(widget2.nodes) == 1
-        assert widget2.nodes[0]["id"] == "node1"
+        assert widget2.nodes["node1"]["id"] == "node1"
         assert widget2.get_node_data("node1")["label"] == "Processor 1"
         
     finally:

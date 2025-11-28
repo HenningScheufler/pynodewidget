@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { NodeComponentBuilder, buildNodeTypes } from '../../src/utils/NodeComponentBuilder';
-import { createHorizontalGridLayout, createVerticalGridLayout, createCompactGridLayout } from '../../src/utils/gridLayoutHelpers';
 import type { CustomNodeData, NodeTemplate } from '../../src/types/schema';
 
 describe('NodeComponentBuilder', () => {
   const createMinimalSchema = (): CustomNodeData => ({
     label: 'Test Node',
-    gridLayout: createHorizontalGridLayout(),
+    grid: {
+      rows: ['1fr'],
+      columns: ['1fr'],
+      cells: []
+    },
     values: {},
   });
 
@@ -18,27 +21,27 @@ describe('NodeComponentBuilder', () => {
       expect(builder).toBeInstanceOf(NodeComponentBuilder);
     });
 
-    it('should require gridLayout', () => {
-      const schema: CustomNodeData = {
+    it('should require grid', () => {
+      const schema = {
         label: 'Test',
         values: {},
-      };
+      } as any; // Intentionally missing grid to test error
 
-      // Should throw because gridLayout is required
-      expect(() => new NodeComponentBuilder(schema)).toThrow('Grid layout configuration is required');
+      // Should throw because grid is required
+      expect(() => new NodeComponentBuilder(schema)).toThrow("'grid' property is required in schema. The old 'gridLayout' system has been removed.");
     });
 
     it('should accept different grid layout types', () => {
       const layouts = [
-        createHorizontalGridLayout(),
-        createVerticalGridLayout(),
-        createCompactGridLayout(),
+        { rows: ['1fr'], columns: ['1fr'], cells: [] },
+        { rows: ['1fr', '1fr'], columns: ['1fr'], cells: [] },
+        { rows: ['auto', 'auto'], columns: ['1fr', '1fr'], cells: [] },
       ];
 
-      layouts.forEach((gridLayout) => {
+      layouts.forEach((grid) => {
         const schema: CustomNodeData = {
           label: 'Test',
-          gridLayout,
+          grid,
           values: {},
         };
 
@@ -58,46 +61,10 @@ describe('NodeComponentBuilder', () => {
       expect(typeof Component).toBe('object');
     });
 
-    it('should build component with header configuration', () => {
-      const schema: CustomNodeData = {
-        label: 'Header Test',
-        gridLayout: createHorizontalGridLayout(),
-        header: {
-          show: true,
-          icon: '⚙️',
-          className: 'custom-header',
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
-    it('should build component with footer configuration', () => {
-      const schema: CustomNodeData = {
-        label: 'Footer Test',
-        gridLayout: createHorizontalGridLayout(),
-        footer: {
-          show: true,
-          text: 'Status: Ready',
-          className: 'custom-footer',
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
     it('should build component with style configuration', () => {
       const schema: CustomNodeData = {
         label: 'Style Test',
-        gridLayout: createHorizontalGridLayout(),
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         style: {
           minWidth: '300px',
           maxWidth: '600px',
@@ -116,7 +83,7 @@ describe('NodeComponentBuilder', () => {
     it('should build component with numeric width values', () => {
       const schema: CustomNodeData = {
         label: 'Numeric Width',
-        gridLayout: createHorizontalGridLayout(),
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         style: {
           minWidth: 200,
           maxWidth: 400,
@@ -136,7 +103,7 @@ describe('NodeComponentBuilder', () => {
       handleTypes.forEach((handleType) => {
         const schema: CustomNodeData = {
           label: 'Handle Test',
-          gridLayout: createHorizontalGridLayout(),
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           handleType,
           values: {},
         };
@@ -151,7 +118,7 @@ describe('NodeComponentBuilder', () => {
     it('should build component with input and output handle types', () => {
       const schema: CustomNodeData = {
         label: 'Handle Test',
-        gridLayout: createHorizontalGridLayout(),
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         handleType: 'base',
         inputHandleType: 'button',
         outputHandleType: 'labeled',
@@ -167,7 +134,7 @@ describe('NodeComponentBuilder', () => {
     it('should build component with inputs and outputs', () => {
       const schema: CustomNodeData = {
         label: 'Handles Test',
-        gridLayout: createHorizontalGridLayout(),
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         inputs: [
           { id: 'input1', label: 'Input 1', handle_type: 'base' },
           { id: 'input2', label: 'Input 2', handle_type: 'button' },
@@ -187,7 +154,7 @@ describe('NodeComponentBuilder', () => {
     it('should build component with validation config', () => {
       const schema: CustomNodeData = {
         label: 'Validation Test',
-        gridLayout: createHorizontalGridLayout(),
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         validation: {
           showErrors: true,
           errorPosition: 'inline',
@@ -205,7 +172,7 @@ describe('NodeComponentBuilder', () => {
     it('should build component with field configurations', () => {
       const schema: CustomNodeData = {
         label: 'Field Config Test',
-        gridLayout: createHorizontalGridLayout(),
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         fieldConfigs: {
           field1: { hidden: true },
           field2: { disabled: true },
@@ -232,7 +199,7 @@ describe('NodeComponentBuilder', () => {
       shadows.forEach((shadow) => {
         const schema: CustomNodeData = {
           label: 'Shadow Test',
-          gridLayout: createHorizontalGridLayout(),
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           style: { shadow },
           values: {},
         };
@@ -247,22 +214,10 @@ describe('NodeComponentBuilder', () => {
     it('should build component with complex configuration', () => {
       const schema: CustomNodeData = {
         label: 'Complex Node',
-        gridLayout: createVerticalGridLayout(),
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         handleType: 'button',
         inputHandleType: 'labeled',
         outputHandleType: 'base',
-        header: {
-          show: true,
-          icon: '🔧',
-          className: 'bg-blue-600',
-          bgColor: '#0066cc',
-          textColor: '#ffffff',
-        },
-        footer: {
-          show: true,
-          text: 'Processing...',
-          className: 'bg-gray-100',
-        },
         style: {
           minWidth: '250px',
           maxWidth: '500px',
@@ -324,55 +279,6 @@ describe('NodeComponentBuilder', () => {
       expect(typeof Component1).toBe(typeof Component2);
     });
   });
-
-  describe('header behavior', () => {
-    it('should show header by default when not specified', () => {
-      const schema: CustomNodeData = {
-        label: 'Test',
-        gridLayout: createHorizontalGridLayout(),
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
-    it('should use icon from header config over root icon', () => {
-      const schema: CustomNodeData = {
-        label: 'Test',
-        gridLayout: createHorizontalGridLayout(),
-        icon: '⚙️',
-        header: {
-          icon: '🔧',
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
-    it('should fallback to root icon if header icon not specified', () => {
-      const schema: CustomNodeData = {
-        label: 'Test',
-        gridLayout: createHorizontalGridLayout(),
-        icon: '⚙️',
-        header: {
-          show: true,
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-  });
 });
 
 describe('buildNodeTypes', () => {
@@ -381,7 +287,7 @@ describe('buildNodeTypes', () => {
     label,
     defaultData: {
       label,
-      gridLayout: createHorizontalGridLayout(),
+      grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
       values: {},
     },
   });
@@ -427,7 +333,7 @@ describe('buildNodeTypes', () => {
         icon: '🚀',
         defaultData: {
           label: 'Advanced',
-          gridLayout: createVerticalGridLayout(),
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           handleType: 'button',
           header: {
             show: true,
@@ -463,14 +369,14 @@ describe('buildNodeTypes', () => {
         label: 'Invalid',
         defaultData: {
           label: 'Invalid',
-          // Missing gridLayout - should throw
+          // Missing grid - should throw
           values: {},
-        },
+        } as any, // Intentionally invalid to test error handling
       },
     ];
 
-    // Should throw because gridLayout is required
-    expect(() => buildNodeTypes(templates)).toThrow('Grid layout configuration is required');
+    // Should throw because grid is required
+    expect(() => buildNodeTypes(templates)).toThrow("'grid' property is required in schema. The old 'gridLayout' system has been removed.");
   });
 
   it('should handle templates with all layout types', () => {
@@ -478,11 +384,11 @@ describe('buildNodeTypes', () => {
       createTemplate('horizontal', 'Horizontal'),
       {
         ...createTemplate('vertical', 'Vertical'),
-        defaultData: { ...createTemplate('vertical', 'Vertical').defaultData, gridLayout: createVerticalGridLayout() },
+        defaultData: { ...createTemplate('vertical', 'Vertical').defaultData, grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
       },
       {
         ...createTemplate('compact', 'Compact'),
-        defaultData: { ...createTemplate('compact', 'Compact').defaultData, gridLayout: createCompactGridLayout() },
+        defaultData: { ...createTemplate('compact', 'Compact').defaultData, grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
       },
     ];
 
@@ -501,7 +407,7 @@ describe('buildNodeTypes', () => {
         label: 'Base',
         defaultData: {
           label: 'Base',
-          gridLayout: createHorizontalGridLayout(),
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           handleType: 'base',
           values: {},
         },
@@ -511,7 +417,7 @@ describe('buildNodeTypes', () => {
         label: 'Button',
         defaultData: {
           label: 'Button',
-          gridLayout: createHorizontalGridLayout(),
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           handleType: 'button',
           values: {},
         },
@@ -521,7 +427,7 @@ describe('buildNodeTypes', () => {
         label: 'Labeled',
         defaultData: {
           label: 'Labeled',
-          gridLayout: createHorizontalGridLayout(),
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           handleType: 'labeled',
           values: {},
         },

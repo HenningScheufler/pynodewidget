@@ -31,8 +31,8 @@ class NodeFlowWidget(anywidget.AnyWidget):
     _esm = pathlib.Path(__file__).parent / "static" / "index.js"
     _css = pathlib.Path(__file__).parent / "static" / "index.css"
     
-    # Graph data
-    nodes = t.List(trait=t.Dict()).tag(sync=True)
+    # Graph data - nodes as dict keyed by ID for efficient per-node updates
+    nodes = t.Dict(trait=t.Dict()).tag(sync=True)
     edges = t.List(trait=t.Dict()).tag(sync=True)
     node_templates = t.List(trait=t.Dict()).tag(sync=True)
     
@@ -47,7 +47,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
     fit_view = t.Bool(default_value=True).tag(sync=True)
     height = t.Unicode(default_value="600px").tag(sync=True)
     
-    def update_node_value(self, node_id: str, key: str, value: any) -> None:
+    def update_node_value(self, node_id: str, key: str, value: Any) -> None:
         """Update a specific value for a node. Auto-syncs to frontend.
         
         Args:
@@ -108,7 +108,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
         values = self.get_node_values(node_id)
         return values.get(key, default)
     
-    def __init__(self, nodes: Optional[List[Type]] = None, height: str = "600px", **kwargs):
+    def __init__(self, nodes: Optional[List[Type[Any]]] = None, height: str = "600px", **kwargs: Any) -> None:
         """Initialize the NodeFlowWidget.
         
         Args:
@@ -130,7 +130,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
     
     def register_node_type(
         self,
-        node_class: Type,
+        node_class: Type[Any],
         type_name: Optional[str] = None
     ) -> "NodeFlowWidget":
         """Register a node class implementing the NodeFactory protocol.
@@ -179,10 +179,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
         label: str,
         description: str = "",
         icon: str = "",
-        inputs: Optional[List[Dict[str, str]]] = None,
-        outputs: Optional[List[Dict[str, str]]] = None,
         grid_layout: Optional[Dict[str, Any]] = None,
-        handle_type: str = "base",
         header: Optional[Dict[str, Any]] = None,
         footer: Optional[Dict[str, Any]] = None,
         style: Optional[Dict[str, Any]] = None
@@ -195,31 +192,30 @@ class NodeFlowWidget(anywidget.AnyWidget):
             label: Display label for the node
             description: Description shown in the panel
             icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
-            inputs: List of input handles with id and label, e.g., 
-                   [{"id": "in1", "label": "Input 1"}, {"id": "in2", "label": "Input 2"}]
-            outputs: List of output handles with id and label, e.g.,
-                    [{"id": "out1", "label": "Output 1"}]
             grid_layout: Grid layout configuration (use helpers from grid_layouts module).
-                        If not provided, defaults to horizontal grid layout.
-            handle_type: Handle style - "base", "button", or "labeled" (default: "base")
+                        If not provided, defaults to vertical layout with JSON schema fields.
             header: Header configuration dict with 'show', 'icon', 'bgColor', 'textColor', etc.
             footer: Footer configuration dict with 'show', 'text', 'className', etc.
             style: Style configuration dict with 'minWidth', 'maxWidth', 'shadow', etc.
             
         Example:
-            >>> from pynodewidget.grid_layouts import create_vertical_grid_layout
+            >>> from pynodewidget.grid_layouts import create_three_column_grid
+            >>> from pynodewidget.models import BaseHandle, TextField
             >>> 
             >>> widget.add_node_type_from_schema(
             ...     json_schema={"type": "object", "properties": {...}},
             ...     type_name="processor",
             ...     label="Data Processor",
             ...     icon="⚙️",
-            ...     grid_layout=create_three_column_grid(...),
-            ...     handle_type="button",
+            ...     grid_layout=create_three_column_grid(
+            ...         left_components=[BaseHandle(id="in1", label="Input", handle_type="input")],
+            ...         center_components=[TextField(id="name", label="Name")],
+            ...         right_components=[BaseHandle(id="out1", label="Output", handle_type="output")]
+            ...     ),
             ...     header={"show": True, "bgColor": "#3b82f6", "textColor": "#ffffff"}
             ... )
         """
-        from .grid_layouts import create_three_column_grid, convert_handles_to_components
+        from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
         from .models import CustomNodeData, NodeTemplate
         
         # Initialize default values from schema
@@ -229,27 +225,16 @@ class NodeFlowWidget(anywidget.AnyWidget):
                 if "default" in prop:
                     default_values[key] = prop["default"]
         
-        # Use three-column grid layout as default if none provided
+        # Use vertical stack grid with JSON schema fields as default if none provided
         if grid_layout is None:
-            # Convert handles to components for the new system
-            input_comps, output_comps = convert_handles_to_components(
-                inputs, outputs, handle_type
-            )
-            grid_layout = create_three_column_grid(
-                left_components=input_comps,
-                center_components=[],  # Parameters will be auto-generated from schema  
-                right_components=output_comps
-            )
+            field_components = json_schema_to_components(json_schema, default_values)
+            grid_layout = create_vertical_stack_grid(middle_components=field_components)
         
         # Build default data with grid layout
         default_data_dict = {
             "label": label,
             "grid": grid_layout,
-            "parameters": json_schema,
-            "inputs": inputs or [],
-            "outputs": outputs or [],
-            "values": default_values,
-            "handleType": handle_type
+            "values": default_values
         }
         
         # Add optional configurations
@@ -281,14 +266,13 @@ class NodeFlowWidget(anywidget.AnyWidget):
     
     def add_node_type_from_pydantic(
         self, 
-        model_class,  # Pydantic BaseModel class
+        model_class: Type[Any],  # Pydantic BaseModel class
         type_name: str,
         label: str,
         description: str = "",
         icon: str = "",
-        inputs: Optional[List[Dict[str, str]]] = None,
-        outputs: Optional[List[Dict[str, str]]] = None
-    ):
+        grid_layout: Optional[Dict[str, Any]] = None
+    ) -> "NodeFlowWidget":
         """Add a node type from a Pydantic model.
         
         Args:
@@ -297,8 +281,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
             label: Display label for the node
             description: Description shown in the panel
             icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
-            inputs: List of input handles with id and label
-            outputs: List of output handles with id and label
+            grid_layout: Grid layout configuration (use helpers from grid_layouts module)
         """
         try:
             from pydantic import BaseModel
@@ -309,10 +292,10 @@ class NodeFlowWidget(anywidget.AnyWidget):
             raise ImportError("pydantic is required for add_node_type_from_pydantic")
         
         return self.add_node_type_from_schema(
-            schema, type_name, label, description, icon, inputs, outputs
+            schema, type_name, label, description, icon, grid_layout
         )
     
-    def export_json(self, filename: str = "flow.json"):
+    def export_json(self, filename: str = "flow.json") -> str:
         """Export the current flow to a JSON file.
         
         Args:
@@ -331,7 +314,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
         print(f"✓ Flow exported to {filename}")
         return filename
     
-    def load_json(self, filename: str):
+    def load_json(self, filename: str) -> None:
         """Load a flow from a JSON file.
         
         Args:
@@ -340,7 +323,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
         with open(filename, 'r') as f:
             data = json.load(f)
         
-        self.nodes = data.get("nodes", [])
+        self.nodes = data.get("nodes", {})  # Dict instead of list
         self.edges = data.get("edges", [])
         self.viewport = data.get("viewport", {"x": 0, "y": 0, "zoom": 1})
         if "node_templates" in data:
@@ -358,15 +341,16 @@ class NodeFlowWidget(anywidget.AnyWidget):
         Returns:
             Node data dict or None if not found
         """
-        for node in self.nodes:
-            if node.get("id") == node_id:
-                return node.get("data", {})
+        node = self.nodes.get(node_id)
+        if node:
+            return node.get("data", {})
         return None
     
-    def clear(self):
+    def clear(self) -> None:
         """Clear all nodes and edges."""
-        self.nodes = []
+        self.nodes = {}  # Empty dict instead of list
         self.edges = []
+        self.node_values = {}  # Clear values too
         return self
     
     def get_flow_data(self) -> Dict[str, Any]:

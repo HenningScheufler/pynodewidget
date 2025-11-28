@@ -1,5 +1,19 @@
 import React from "react";
+import * as v from "valibot";
 import { Input } from "@/components/ui/input";
+import type { PrimitiveFieldValue } from "@/types/schema";
+
+// Valibot schema for NumberField component
+export const NumberFieldSchema = v.object({
+  id: v.string(),
+  type: v.literal("number"),
+  label: v.string(),
+  value: v.optional(v.number()),
+  min: v.optional(v.number()),
+  max: v.optional(v.number()),
+});
+
+export type NumberField = v.InferOutput<typeof NumberFieldSchema>;
 
 interface NumberFieldProps {
   value: number;
@@ -9,7 +23,34 @@ interface NumberFieldProps {
   label?: string;
 }
 
-export function NumberField({ value, onChange, isInteger, placeholder, label }: NumberFieldProps) {
+type NumberFieldComponentProps = 
+  | NumberFieldProps
+  | { component: NumberField; onValueChange?: (id: string, value: PrimitiveFieldValue) => void };
+
+export function NumberField(props: NumberFieldComponentProps) {
+  // If schema component is passed, render with label
+  if ('component' in props) {
+    const { component, onValueChange } = props;
+    return (
+      <div className="component-number-field">
+        <label className="text-xs text-gray-600 mb-1">{component.label}</label>
+        <Input
+          type="number"
+          value={component.value ?? 0}
+          step="any"
+          onChange={(e) => onValueChange?.(component.id, Number(e.target.value))}
+          onMouseDownCapture={(e) => e.stopPropagation()}
+          onPointerDownCapture={(e) => e.stopPropagation()}
+          onWheel={(e) => e.currentTarget.blur()}
+          aria-label={component.label}
+          className="h-8 text-xs"
+        />
+      </div>
+    );
+  }
+  
+  // Otherwise handle simple props
+  const { value, onChange, isInteger, placeholder, label } = props;
   return (
     <Input
       type="number"

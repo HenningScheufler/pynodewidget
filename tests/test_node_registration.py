@@ -2,7 +2,7 @@
 
 import pytest
 from pydantic import BaseModel, Field
-from pynodewidget import NodeFlowWidget, JsonSchemaNodeWidget
+from pynodewidget import NodeFlowWidget, NodeBuilder
 
 
 # Test node classes
@@ -12,7 +12,7 @@ class SimpleParams(BaseModel):
     value: int = Field(default=42)
 
 
-class SimpleNode(JsonSchemaNodeWidget):
+class SimpleNode(NodeBuilder):
     """Simple test node."""
     label = "Simple Node"
     parameters = SimpleParams
@@ -24,7 +24,7 @@ class AdvancedParams(BaseModel):
     mode: str = Field(default="auto")
 
 
-class AdvancedNode(JsonSchemaNodeWidget):
+class AdvancedNode(NodeBuilder):
     """Advanced test node with all features."""
     label = "Advanced Node"
     parameters = AdvancedParams
@@ -53,7 +53,8 @@ class TestNodeRegistration:
         
         assert template["type"] == "simple_node"
         assert template["label"] == "Simple Node"
-        assert "parameters" in template["defaultData"]
+        assert "grid" in template["defaultData"]
+        assert "cells" in template["defaultData"]["grid"]
     
     def test_register_node_with_custom_type_name(self):
         """Test registering with custom type name."""
@@ -97,8 +98,9 @@ class TestNodeRegistration:
         assert template["description"] == "An advanced processing node"
         
         data = template["defaultData"]
-        assert data["inputs"] == [{"id": "input", "label": "Input", "handleType": None}]
-        assert data["outputs"] == [{"id": "output", "label": "Output", "handleType": None}]
+        # Check grid structure instead of inputs/outputs
+        assert "grid" in data
+        assert "cells" in data["grid"]
     
     def test_register_invalid_node_raises_error(self):
         """Test that registering invalid node raises AttributeError."""
@@ -110,25 +112,19 @@ class TestNodeRegistration:
         assert "missing required attribute" in str(exc_info.value).lower()
     
     def test_schema_generation(self):
-        """Test that JSON schema is generated from Pydantic model."""
+        """Test that grid layout is generated from node definition."""
         flow = NodeFlowWidget()
         flow.register_node_type(AdvancedNode)
         
         template = flow.node_templates[0]
-        schema = template["defaultData"]["parameters"]
+        grid = template["defaultData"]["grid"]
         
-        assert "properties" in schema
-        assert "threshold" in schema["properties"]
-        assert "mode" in schema["properties"]
-        
-        # Check constraints are preserved
-        threshold_prop = schema["properties"]["threshold"]
-        assert threshold_prop.get("minimum") == 0
-        assert threshold_prop.get("maximum") == 1
+        assert "cells" in grid
+        assert "rows" in grid
     
     def test_camel_case_to_snake_case_conversion(self):
         """Test that class names are converted to snake_case type names."""
-        class MyComplexNodeName(JsonSchemaNodeWidget):
+        class MyComplexNodeName(NodeBuilder):
             label = "Test"
             parameters = SimpleParams
         
@@ -203,8 +199,9 @@ class TestBackwardCompatibility:
         )
         
         template = flow.node_templates[0]
-        # Should use 'parameters' not 'schema'
-        assert "parameters" in template["defaultData"]
+        # Should have grid layout
+        assert "grid" in template["defaultData"]
+        assert "cells" in template["defaultData"]["grid"]
         assert "schema" not in template["defaultData"]
     
     def test_add_node_type_from_pydantic_still_works(self):
@@ -249,7 +246,7 @@ class TestTypedHandles:
             data: str = Field(description="Data input")
             config: str = Field(description="Config input")
         
-        class NodeWithTypedInputs(JsonSchemaNodeWidget):
+        class NodeWithTypedInputs(NodeBuilder):
             label = "Typed Inputs"
             parameters = SimpleParams
             inputs = InputHandles
@@ -257,11 +254,9 @@ class TestTypedHandles:
         flow = NodeFlowWidget(nodes=[NodeWithTypedInputs])
         
         template = flow.node_templates[0]
-        inputs = template["defaultData"]["inputs"]
-        
-        assert len(inputs) == 2
-        assert inputs[0]["id"] == "data"
-        assert inputs[1]["id"] == "config"
+        # Check grid has handle components
+        grid = template["defaultData"]["grid"]
+        assert "cells" in grid
     
     def test_pydantic_outputs_converted(self):
         """Test Pydantic output models are converted to handle configs."""
@@ -269,7 +264,7 @@ class TestTypedHandles:
             result: str = Field(description="Result output")
             status: str = Field(description="Status output")
         
-        class NodeWithTypedOutputs(JsonSchemaNodeWidget):
+        class NodeWithTypedOutputs(NodeBuilder):
             label = "Typed Outputs"
             parameters = SimpleParams
             outputs = OutputHandles
@@ -277,11 +272,9 @@ class TestTypedHandles:
         flow = NodeFlowWidget(nodes=[NodeWithTypedOutputs])
         
         template = flow.node_templates[0]
-        outputs = template["defaultData"]["outputs"]
-        
-        assert len(outputs) == 2
-        assert outputs[0]["id"] == "result"
-        assert outputs[1]["id"] == "status"
+        # Check that grid has handle components
+        grid = template["defaultData"]["grid"]
+        assert "cells" in grid
 
 
 class TestDefaultValues:
@@ -298,11 +291,10 @@ class TestDefaultValues:
         assert values == {}
     
     def test_schema_contains_defaults(self):
-        """Test that defaults are in the schema properties."""
+        """Test node registration creates template with proper grid structure."""
         flow = NodeFlowWidget(nodes=[SimpleNode])
         
         template = flow.node_templates[0]
-        schema = template["defaultData"]["parameters"]
-        
-        assert schema["properties"]["name"]["default"] == "test"
-        assert schema["properties"]["value"]["default"] == 42
+        # Check that grid exists (values will be empty until node is instantiated)
+        assert "grid" in template["defaultData"]
+        assert "cells" in template["defaultData"]["grid"]

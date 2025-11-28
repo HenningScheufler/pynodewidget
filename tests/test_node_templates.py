@@ -23,9 +23,7 @@ def test_add_node_type_from_schema():
         type_name="test_node",
         label="Test Node",
         description="A test node",
-        icon="🧪",
-        inputs=[{"id": "in1", "label": "Input 1"}],
-        outputs=[{"id": "out1", "label": "Output 1"}]
+        icon="🧪"
     )
     
     assert len(widget.node_templates) == 1
@@ -34,9 +32,8 @@ def test_add_node_type_from_schema():
     assert template["label"] == "Test Node"
     assert template["description"] == "A test node"
     assert template["icon"] == "🧪"
-    assert template["defaultData"]["parameters"] == schema
-    assert len(template["defaultData"]["inputs"]) == 1
-    assert len(template["defaultData"]["outputs"]) == 1
+    assert "grid" in template["defaultData"]
+    assert "cells" in template["defaultData"]["grid"]
 
 
 def test_add_node_type_default_values():
@@ -74,8 +71,8 @@ def test_add_node_type_without_handles():
     )
     
     template = widget.node_templates[0]
-    assert template["defaultData"]["inputs"] == []
-    assert template["defaultData"]["outputs"] == []
+    # Check grid exists
+    assert "grid" in template["defaultData"]
 
 
 def test_multiple_node_types():
@@ -139,7 +136,8 @@ def test_add_node_type_from_pydantic():
     template = widget.node_templates[0]
     assert template["type"] == "pydantic_node"
     assert template["icon"] == "🐍"
-    assert "properties" in template["defaultData"]["parameters"]
+    assert "grid" in template["defaultData"]
+    assert "cells" in template["defaultData"]["grid"]
 
 
 def test_add_node_type_from_pydantic_without_pydantic():

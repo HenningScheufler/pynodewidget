@@ -45,19 +45,20 @@ class CustomNodeData(BaseModel):
     """Complete node data configuration with grid layout support.
     
     This is the main model that defines a node's complete structure,
-    including its parameters, layout, styling, and handles.
+    including its layout, styling, and handles.
     
-    Uses the new three-layer grid system (NodeGrid).
+    Uses the three-layer grid system (NodeGrid → GridCell → Components).
+    
+    IMPORTANT: All nodes MUST use the grid-based architecture:
+    - Define handles using grid.cells with HandleComponent (BaseHandle, ButtonHandle, LabeledHandle)
+    - Define fields using grid.cells with FieldComponent (TextField, NumberField, etc.)
     """
     label: str = Field(..., description="Node display label")
     
-    # New three-layer grid system
-    grid: Optional['NodeGrid'] = Field(None, description="Three-layer grid layout")
+    # Three-layer grid system (REQUIRED)
+    grid: 'NodeGrid' = Field(..., description="Three-layer grid layout (NodeGrid → GridCell → Components)")
     
-    # Optional fields (some for backward compatibility)
-    parameters: Optional[Dict[str, Any]] = Field(None, description="JSON Schema for parameters")
-    inputs: List[NodeHandle] = Field(default_factory=list, description="Input handles")
-    outputs: List[NodeHandle] = Field(default_factory=list, description="Output handles")
+    # Optional fields
     values: Dict[str, Any] = Field(default_factory=dict, description="Current parameter values")
     handleType: Literal["base", "button", "labeled"] = Field(
         default="base",

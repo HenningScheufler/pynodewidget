@@ -480,7 +480,7 @@ def merge_configs(*configs: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Merged configuration dictionary
     """
-    result = {}
+    result: dict[str, Any] = {}
     
     for config in configs:
         for key, value in config.items():

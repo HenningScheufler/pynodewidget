@@ -1,5 +1,17 @@
 import React from "react";
+import * as v from "valibot";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { PrimitiveFieldValue } from "@/types/schema";
+
+// Valibot schema for BoolField component
+export const BoolFieldSchema = v.object({
+  id: v.string(),
+  type: v.literal("bool"),
+  label: v.string(),
+  value: v.optional(v.boolean()),
+});
+
+export type BoolField = v.InferOutput<typeof BoolFieldSchema>;
 
 interface BooleanFieldProps {
   value: boolean;
@@ -7,7 +19,31 @@ interface BooleanFieldProps {
   label?: string;
 }
 
-export function BooleanField({ value, onChange, label }: BooleanFieldProps) {
+type BooleanFieldComponentProps = 
+  | BooleanFieldProps
+  | { component: BoolField; onValueChange?: (id: string, value: PrimitiveFieldValue) => void };
+
+export function BooleanField(props: BooleanFieldComponentProps) {
+  // If schema component is passed, render with label
+  if ('component' in props) {
+    const { component, onValueChange } = props;
+    return (
+      <div className="component-bool-field flex items-center gap-2">
+        <Checkbox
+          checked={component.value || false}
+          onCheckedChange={(checked) => onValueChange?.(component.id, checked === true)}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label={component.label}
+          className="h-4 w-4"
+        />
+        <label className="text-sm text-gray-700">{component.label}</label>
+      </div>
+    );
+  }
+  
+  // Otherwise handle simple props
+  const { value, onChange, label } = props;
   return (
     <Checkbox
       checked={value}

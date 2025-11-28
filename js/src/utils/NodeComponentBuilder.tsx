@@ -5,8 +5,7 @@
  * an optimized React component that can be registered in ReactFlow's nodeTypes.
  * 
  * Key features:
- * - Resolves layout and handle types at build time (not render time)
- * - Pre-computes static parts (header, footer, styles)
+ * - Uses three-layer grid system (NodeGrid → GridCell → ComponentType)
  * - Returns memoized component for optimal performance
  * - Validates schema structure and throws clear errors
  */
@@ -17,14 +16,33 @@ import type { ComponentType } from "react";
 import type { 
   CustomNodeData, 
   NodeTemplate,
+  PrimitiveFieldValue,
   FieldValue,
 } from "../types/schema";
-import { GridLayout } from "../components/layouts/GridLayout";
 import { NodeGridRenderer } from "../components/GridRenderer";
-import { NodeDataContext } from "../components/layouts/ContentRenderer";
-import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { NodeDataContext } from "../contexts/NodeDataContext";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useSetNodeValues } from "../index";
+
+/**
+ * Convert PrimitiveFieldValue to FieldValue discriminated union
+ */
+function toFieldValue(value: PrimitiveFieldValue): FieldValue {
+  if (value === null) {
+    return { type: 'null', value: null };
+  }
+  if (typeof value === 'string') {
+    return { type: 'string', value };
+  }
+  if (typeof value === 'number') {
+    return { type: 'number', value };
+  }
+  if (typeof value === 'boolean') {
+    return { type: 'boolean', value };
+  }
+  throw new Error(`Unexpected value type: ${typeof value}`);
+}
 
 /**
  * NodeComponentBuilder class
@@ -33,15 +51,14 @@ import { useSetNodeValues } from "../index";
  * ```typescript
  * const schema: CustomNodeData = {
  *   label: "Processor",
- *   gridLayout: {
- *     type: "grid",
- *     layout: { ... }
- *   },
- *   header: { show: true, icon: "⚙️" }
+ *   grid: {
+ *     rows: ["auto", "1fr", "auto"],
+ *     columns: ["1fr"],
+ *     cells: [...]
+ *   }
  * };
  * 
  * const component = NodeComponentBuilder.buildComponent(schema);
- * nodeFactory.register("processor", component);
  * ```
  */
 export class NodeComponentBuilder {
@@ -50,62 +67,10 @@ export class NodeComponentBuilder {
   constructor(schema: CustomNodeData) {
     this.schema = schema;
     
-    // Validate that either new grid or old gridLayout is provided
-    if (!schema.grid && !schema.gridLayout) {
-      throw new Error("Either 'grid' (new system) or 'gridLayout' (old system) is required in schema.");
+    // Validate that grid is provided
+    if (!schema.grid) {
+      throw new Error("'grid' property is required in schema. The old 'gridLayout' system has been removed.");
     }
-  }
-
-  /**
-   * Build header configuration and pre-render header element
-   */
-  private buildHeaderConfig() {
-    const { header, label, icon } = this.schema;
-    const showHeader = header?.show !== false;
-    const headerIcon = header?.icon || icon;
-    
-    return {
-      show: showHeader,
-      element: showHeader ? (
-        <CardHeader 
-          className={cn(
-            "p-2.5 space-y-0 px-2.5",
-            header?.className || "bg-primary text-primary-foreground"
-          )}
-          style={{
-            backgroundColor: header?.bgColor,
-            color: header?.textColor,
-          }}
-        >
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            {headerIcon && <span className="text-base">{headerIcon}</span>}
-            {label}
-          </CardTitle>
-        </CardHeader>
-      ) : null
-    };
-  }
-
-  /**
-   * Build footer configuration and pre-render footer element
-   */
-  private buildFooterConfig() {
-    const { footer } = this.schema;
-    const showFooter = footer?.show === true;
-    
-    return {
-      show: showFooter,
-      element: showFooter && footer ? (
-        <CardFooter 
-          className={cn(
-            "p-2 px-2.5 text-xs text-muted-foreground border-t",
-            footer.className
-          )}
-        >
-          {footer.text}
-        </CardFooter>
-      ) : null
-    };
   }
 
   /**
@@ -144,15 +109,13 @@ export class NodeComponentBuilder {
   }
 
   /**
-   * Build the complete React component with all configuration baked in
+   * Build the complete React component
    * 
    * Returns a memoized component that only re-renders when necessary
    * (when id, selected, or values change).
    */
   buildComponent(): ComponentType<NodeProps> {
     const { schema } = this;
-    const headerConfig = this.buildHeaderConfig();
-    const footerConfig = this.buildFooterConfig();
     const styleConfig = this.buildStyleConfig();
 
     // Generate component with all config baked into closure
@@ -160,19 +123,17 @@ export class NodeComponentBuilder {
       const nodeData = data as CustomNodeData;
       const setNodeValues = useSetNodeValues();
 
-      const handleInputChange = React.useCallback((key: string, value: FieldValue) => {
+      const handleInputChange = React.useCallback((key: string, value: PrimitiveFieldValue) => {
         setNodeValues(prev => ({
           ...prev,
-          [id]: { ...prev[id], [key]: value }
+          [id]: { ...prev[id], [key]: toFieldValue(value) }
         }));
       }, [id, setNodeValues]);
 
-      // Support both new grid system and old gridLayout system
-      const useNewGrid = !!nodeData.grid || !!schema.grid;
+      // Use grid from runtime data or fallback to schema
       const grid = nodeData.grid || schema.grid;
-      const gridLayout = nodeData.gridLayout || schema.gridLayout;
 
-      // Create context value for widgets
+      // Create context value
       const contextValue = React.useMemo(() => ({
         nodeId: id,
         nodeData,
@@ -187,27 +148,13 @@ export class NodeComponentBuilder {
           )}
           style={styleConfig.style}
         >
-          {headerConfig.element}
-          
           <NodeDataContext.Provider value={contextValue}>
-            {useNewGrid && grid ? (
-              // New three-layer grid system
-              <NodeGridRenderer 
-                grid={grid}
-                nodeId={id}
-                onValueChange={handleInputChange}
-              />
-            ) : gridLayout ? (
-              // Old grid system
-              <GridLayout layout={gridLayout.layout} />
-            ) : (
-              <div className="p-4 text-red-500 text-sm">
-                Error: No grid configuration found
-              </div>
-            )}
+            <NodeGridRenderer 
+              grid={grid}
+              nodeId={id}
+              onValueChange={handleInputChange}
+            />
           </NodeDataContext.Provider>
-          
-          {footerConfig.element}
         </Card>
       );
     };
@@ -252,7 +199,10 @@ export function buildNodeTypes(templates: NodeTemplate[]): Record<string, Compon
     try {
       nodeTypes[template.type] = NodeComponentBuilder.buildComponent(template.defaultData);
     } catch (error) {
-      console.error(`Failed to build component for node type "${template.type}":`, error);
+      // Only log in non-test environments to avoid cluttering test output
+      if (process.env.NODE_ENV !== 'test' && typeof process.env.VITEST === 'undefined') {
+        console.error(`Failed to build component for node type "${template.type}":`, error);
+      }
       throw error;
     }
   }

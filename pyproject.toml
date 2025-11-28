@@ -32,6 +32,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "taskipy>=1.13.0",
     "hatchling>=1.27.0",
+    "mypy>=1.0.0",
 ]
 docs = [
     "mkdocs>=1.6.0",

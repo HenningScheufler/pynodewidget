@@ -18,9 +18,9 @@ export function NodePreviewCard({ combo, sampleNodeData, showSelected }: NodePre
   
   // Build node component from schema with grid layout and handle type combined
   const nodeComponent = useMemo(() => {
-    // Combine grid layout data with handle type
+    // Combine grid data with handle type
     const schema: CustomNodeData = {
-      ...combo.layout.defaultData,  // Grid layout data (includes gridLayout property)
+      ...combo.layout.defaultData,  // Grid-based node data
       handleType: combo.handle.type as any,  // Override with selected handle type
       label: combo.label,  // Combined label
       header: {

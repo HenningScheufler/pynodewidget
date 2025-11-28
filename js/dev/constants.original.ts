@@ -22,6 +22,7 @@ import type {
   GridCell, 
   GridCoordinates, 
   CellLayout,
+  ComponentType,
   ButtonHandle,
   LabeledHandle,
   BaseHandle,
@@ -32,7 +33,6 @@ import type {
   HeaderComponent,
   ButtonComponent,
   DividerComponent,
-  ComponentType
 } from '../src/types/schema';
 
 // =============================================================================

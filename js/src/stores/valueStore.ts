@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Node } from '@xyflow/react';
+import type { PrimitiveFieldValue } from '../types/schema';
 
 /**
  * Value store for managing dynamic node values separately from structural data.
@@ -16,7 +17,7 @@ import type { Node } from '@xyflow/react';
 
 export interface NodeValues {
   [nodeId: string]: {
-    [fieldName: string]: any;
+    [fieldName: string]: PrimitiveFieldValue;
   };
 }
 
@@ -25,13 +26,13 @@ interface ValueStoreState {
   values: NodeValues;
   
   /** Update a single field value for a node */
-  updateValue: (nodeId: string, fieldName: string, value: any) => void;
+  updateValue: (nodeId: string, fieldName: string, value: PrimitiveFieldValue) => void;
   
   /** Update multiple fields for a node at once */
-  updateNodeValues: (nodeId: string, values: Record<string, any>) => void;
+  updateNodeValues: (nodeId: string, values: Record<string, PrimitiveFieldValue>) => void;
   
   /** Get all values for a specific node */
-  getNodeValues: (nodeId: string) => Record<string, any> | undefined;
+  getNodeValues: (nodeId: string) => Record<string, PrimitiveFieldValue> | undefined;
   
   /** Initialize values from nodes array (called on mount/Python sync) */
   initializeFromNodes: (nodes: Node[]) => void;

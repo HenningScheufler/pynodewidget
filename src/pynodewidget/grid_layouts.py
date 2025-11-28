@@ -20,16 +20,13 @@ Example:
     ... )
 """
 
-from typing import Dict, Any, List, Literal, Optional
+from typing import Dict, Any, List, Literal, Optional, Union
 from pynodewidget.models import (
     NodeGrid,
     GridCell,
     GridCoordinates,
     CellLayout,
     ComponentType,
-    BaseHandle,
-    LabeledHandle,
-    ButtonHandle,
     TextField,
     NumberField,
     BoolField,
@@ -234,60 +231,6 @@ def create_header_body_grid(
     )
 
 
-# =============================================================================
-# MIGRATION HELPERS: Convert old handles to new components
-# =============================================================================
-
-def convert_handles_to_components(
-    inputs: Optional[List[Dict[str, Any]]] = None,
-    outputs: Optional[List[Dict[str, Any]]] = None,
-    handle_style: Literal["base", "labeled", "button"] = "base"
-) -> tuple[List[ComponentType], List[ComponentType]]:
-    """Convert old handle dictionaries to new component types.
-    
-    Args:
-        inputs: List of input handle dicts with 'id' and 'label'
-        outputs: List of output handle dicts with 'id' and 'label'
-        handle_style: Handle style to use
-        
-    Returns:
-        Tuple of (input_components, output_components)
-    """
-    HandleClass = {
-        "base": BaseHandle,
-        "labeled": LabeledHandle,
-        "button": ButtonHandle
-    }[handle_style]
-    
-    input_components = []
-    if inputs:
-        for h in inputs:
-            input_components.append(
-                HandleClass(
-                    id=h["id"],
-                    label=h["label"],
-                    handle_type="input",
-                    dataType=h.get("dataType"),
-                    required=h.get("required", False)
-                )
-            )
-    
-    output_components = []
-    if outputs:
-        for h in outputs:
-            output_components.append(
-                HandleClass(
-                    id=h["id"],
-                    label=h["label"],
-                    handle_type="output",
-                    dataType=h.get("dataType"),
-                    required=h.get("required", False)
-                )
-            )
-    
-    return input_components, output_components
-
-
 def json_schema_to_components(
     json_schema: Dict[str, Any],
     values: Optional[Dict[str, Any]] = None
@@ -301,7 +244,7 @@ def json_schema_to_components(
     Returns:
         List of field components
     """
-    components = []
+    components: list[Union[TextField, NumberField, BoolField, SelectField]] = []
     values = values or {}
     
     if "properties" not in json_schema:
@@ -343,8 +286,3 @@ def json_schema_to_components(
             ))
     
     return components
-
-
-# =============================================================================
-# OLD GRID SYSTEM HELPERS (Deprecated)
-# =============================================================================

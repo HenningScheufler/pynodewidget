@@ -22,6 +22,8 @@ import type {
   GridCell, 
   GridCoordinates, 
   CellLayout,
+  HandleConfig,
+  ComponentType,
   ButtonHandle,
   LabeledHandle,
   BaseHandle,
@@ -32,8 +34,6 @@ import type {
   HeaderComponent,
   ButtonComponent,
   DividerComponent,
-  ComponentType,
-  HandleConfig
 } from '../src/types/schema';
 
 // =============================================================================

@@ -10,32 +10,29 @@ import type { Node, Edge, NodeChange, EdgeChange, Connection, NodeTypes } from "
 import "@xyflow/react/dist/style.css";
 import "./style.css";
 import { NodeComponentBuilder, buildNodeTypes } from "./utils/NodeComponentBuilder";
-import { nodeFactory } from "./components/NodeFactory";
 import { NodeSidebar } from "./NodeSidebar";
-import type { NodeTemplate } from "./types/schema";
+import type { NodeTemplate, NodesDict, NodeValues } from "./types/schema";
 import { FlowCanvas } from "./components/FlowCanvas";
 import { useAutoLayout } from "./hooks/useAutoLayout";
 import { useExport } from "./hooks/useExport";
 import { useContextMenu } from "./hooks/useContextMenu";
-import { fieldRegistry } from "./components/fields/FieldRegistry";
-import type { FieldRenderer } from "./types/fieldRenderer";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar";
 
-// Context to provide setNodes from useModelState to nodes
-const SetNodesContext = React.createContext<React.Dispatch<React.SetStateAction<Node[]>> | null>(null);
+// Context to provide setNodesDict from useModelState to nodes
+const SetNodesDictContext = React.createContext<React.Dispatch<React.SetStateAction<NodesDict>> | null>(null);
 
 // Context to provide setNodeValues for syncing values separately
-const SetNodeValuesContext = React.createContext<React.Dispatch<React.SetStateAction<Record<string, any>>> | null>(null);
+const SetNodeValuesContext = React.createContext<React.Dispatch<React.SetStateAction<NodeValues>> | null>(null);
 
 // Export contexts for testing
-export { SetNodesContext, SetNodeValuesContext };
+export { SetNodesDictContext, SetNodeValuesContext };
 
-export const useSetNodes = () => {
-  const setNodes = React.useContext(SetNodesContext);
-  if (!setNodes) {
-    throw new Error('useSetNodes must be used within SetNodesContext.Provider');
+export const useSetNodesDict = () => {
+  const setNodesDict = React.useContext(SetNodesDictContext);
+  if (!setNodesDict) {
+    throw new Error('useSetNodesDict must be used within SetNodesDictContext.Provider');
   }
-  return setNodes;
+  return setNodesDict;
 };
 
 export const useSetNodeValues = () => {
@@ -46,25 +43,47 @@ export const useSetNodeValues = () => {
   return setNodeValues;
 };
 
-// Export fieldRegistry and FieldRenderer for custom field type registration
-export { fieldRegistry, type FieldRenderer };
+// Export context
+export { NodeDataContext } from "./contexts/NodeDataContext";
+export { useNodeDataContext } from "./contexts/NodeDataContext";
+export type { NodeDataContextValue } from "./contexts/NodeDataContext";
 
-// Export grid layout system
-export { NodeDataContext } from "./components/layouts/ContentRenderer";
-export type { ContentArea } from "./types/grid";
-
-// Export handle registry for custom handles
-export { getHandle, registerHandle, getAvailableHandles } from "./components/handles/HandleFactory";
-export type { HandleType } from "./components/handles/HandleFactory";
+// Export handle components
+export { BaseHandle } from "./components/handles/BaseHandle";
+export { LabeledHandle } from "./components/handles/LabeledHandle";
+export { ButtonHandle } from "./components/handles/ButtonHandle";
+export type { BaseHandleProps } from "./components/handles/BaseHandle";
 
 // Export node builder utilities
 export { NodeComponentBuilder, buildNodeTypes } from "./utils/NodeComponentBuilder";
 
-// Export core types
+// Export core types from schema
 export type { 
-  FieldValue, 
-  JsonSchema, 
-  JsonSchemaProperty, 
+  // Value types
+  FieldValue,
+  PrimitiveFieldValue,
+  // Component types (from ComponentFactory)
+  ComponentType,
+  Handle,
+  GridCell,
+  NodeGrid,
+  // Individual component types
+  BaseHandle as BaseHandleType,
+  LabeledHandle as LabeledHandleType,
+  ButtonHandle as ButtonHandleType,
+  TextField,
+  NumberField,
+  BoolField,
+  SelectField,
+  HeaderComponent,
+  FooterComponent,
+  ButtonComponent,
+  DividerComponent,
+  SpacerComponent,
+  GridLayoutComponent,
+  GridCoordinates,
+  CellLayout,
+  // Node types
   CustomNodeData, 
   NodeTemplate,
   HandleConfig,
@@ -74,43 +93,85 @@ export type {
   ValidationConfig,
   FieldConfig,
   FieldCondition,
+  ContextMenuState,
+  // New architecture types
+  NodeDefinition,
+  NodeTemplateV2,
+  NodesDict,
+  NodeValues,
 } from "./types/schema";
+
+// Backwards compatibility: export setNodes as alias to setNodesDict
+export const useSetNodes = useSetNodesDict;
 
 function NodeFlowComponent() {
   // Get state from Python via anywidget - this is the source of truth
-  const [nodes, setNodes] = useModelState<Node[]>("nodes");
+  // CHANGED: nodes is now a dict keyed by ID
+  const [nodesDict, setNodesDict] = useModelState<NodesDict>("nodes");
   const [edges, setEdges] = useModelState<Edge[]>("edges");
   const [nodeTemplates] = useModelState<NodeTemplate[]>("node_templates");
   const [height] = useModelState<string>("height");
   
   // Watch node values separately - this is a dict keyed by node ID
-  const [nodeValues, setNodeValues] = useModelState<Record<string, any>>("node_values");
+  const [nodeValues, setNodeValues] = useModelState<NodeValues>("node_values");
   
-  // Merge node values into nodes when they change from Python
-  const nodesWithValues = React.useMemo(() => {
+  // Convert nodesDict to array for React Flow
+  const nodes = React.useMemo(() => {
+    return Object.values(nodesDict || {});
+  }, [nodesDict]);
+  
+  // Build template lookup map
+  const templateMap = React.useMemo(() => {
+    const map = new Map<string, NodeTemplate>();
+    nodeTemplates.forEach(template => {
+      map.set(template.type, template);
+    });
+    return map;
+  }, [nodeTemplates]);
+  
+  // Merge template definition + values into nodes for rendering
+  const nodesWithData = React.useMemo(() => {
     if (!nodeValues || Object.keys(nodeValues).length === 0) return nodes;
     
     return nodes.map(node => {
-      const values = nodeValues[node.id];
-      if (values) {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            values
-          }
-        };
+      const template = templateMap.get(node.type);
+      const values = nodeValues[node.id] || {};
+      
+      if (!template) {
+        console.warn(`Template not found for node type: ${node.type}`);
+        return node;
       }
-      return node;
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          ...template.defaultData,  // Merge template data (includes grid, label, etc.)
+          values                     // Add field values
+        }
+      };
     });
-  }, [nodes, nodeValues]);
+  }, [nodes, templateMap, nodeValues]);
 
   // Handle node changes from React Flow and sync to Python
+  // Convert array changes back to dict updates
   const onNodesChange = React.useCallback(
     (changes: NodeChange[]) => {
-      setNodes((nds) => applyNodeChanges(changes, nds));
+      setNodesDict((prevDict) => {
+        // Convert dict to array, apply changes, convert back to dict
+        const nodesArray = Object.values(prevDict);
+        const updatedArray = applyNodeChanges(changes, nodesArray);
+        
+        // Convert back to dict
+        const newDict: NodesDict = {};
+        updatedArray.forEach(node => {
+          newDict[node.id] = node;
+        });
+        
+        return newDict;
+      });
     },
-    [setNodes]
+    [setNodesDict]
   );
 
   // Handle edge changes from React Flow and sync to Python
@@ -121,29 +182,10 @@ function NodeFlowComponent() {
     [setEdges]
   );
 
-  // Build and register node components from templates
-  React.useEffect(() => {
-    // Build components from templates and register them
-    nodeTemplates.forEach((template) => {
-      try {
-        const component = NodeComponentBuilder.buildComponent(template.defaultData);
-        nodeFactory.register(template.type, component);
-      } catch (error) {
-        console.error(`Failed to register node type "${template.type}":`, error);
-      }
-    });
-  }, [nodeTemplates]);
-
-  // Only expose node types specified in nodeTemplates, using the registered components from nodeFactory
+  // Build node types directly from templates using buildNodeTypes utility
   const nodeTypes = React.useMemo<NodeTypes>(() => {
-    const types: NodeTypes = {};
-    const all = nodeFactory.getAll();
-    nodeTemplates.forEach((template) => {
-      const comp = all[template.type];
-      if (comp !== undefined) types[template.type] = comp;
-    });
-    return types;
-  }, [nodeTemplates, nodes]);
+    return buildNodeTypes(nodeTemplates);
+  }, [nodeTemplates]);
 
   const onConnect = React.useCallback(
     (connection: Connection) => {
@@ -154,20 +196,46 @@ function NodeFlowComponent() {
 
   const onAddNode = React.useCallback(
     (template: NodeTemplate) => {
+      const nodeId = `node-${Date.now()}`;
       const newNode: Node = {
-        id: `node-${Date.now()}`,
+        id: nodeId,
         type: template.type,
         position: { x: 100, y: 100 },
-        data: template.defaultData,
+        data: {},  // Empty data - all config in template
       };
-      setNodes((nds) => [...nds, newNode]);
+      
+      // Add to dict
+      setNodesDict((prev) => ({
+        ...prev,
+        [nodeId]: newNode
+      }));
+      
+      // Initialize values if template has defaults
+      if (template.defaultData?.values) {
+        setNodeValues((prev) => ({
+          ...prev,
+          [nodeId]: { ...template.defaultData.values }
+        }));
+      }
     },
-    [setNodes]
+    [setNodesDict, setNodeValues]
   );
 
   // Use custom hooks for separated concerns
   const { exportToJSON } = useExport(nodes, edges);
-  const { onLayout } = useAutoLayout(nodes, edges, setNodes);
+  
+  // Note: useAutoLayout expects setNodes callback, need to adapt
+  const setNodesArray = React.useCallback((updater: (nodes: Node[]) => Node[]) => {
+    setNodesDict(prev => {
+      const nodesArray = Object.values(prev);
+      const updated = typeof updater === 'function' ? updater(nodesArray) : updater;
+      const newDict: NodesDict = {};
+      updated.forEach(node => { newDict[node.id] = node; });
+      return newDict;
+    });
+  }, [setNodesDict]);
+  
+  const { onLayout } = useAutoLayout(nodes, edges, setNodesArray);
   const {
     contextMenu,
     onNodeContextMenu,
@@ -175,11 +243,11 @@ function NodeFlowComponent() {
     onPaneClick,
     onDelete,
     closeContextMenu,
-  } = useContextMenu(setNodes, setEdges);
+  } = useContextMenu(setNodesArray, setEdges);
 
   return (
     <div style={{ width: "100%", height: height, display: "flex", position: "relative", overflow: "hidden" }}>
-      <SetNodesContext.Provider value={setNodes}>
+      <SetNodesDictContext.Provider value={setNodesDict}>
         <SetNodeValuesContext.Provider value={setNodeValues}>
           <ReactFlowProvider>
             <SidebarProvider defaultOpen={true} className="!min-h-0 !h-full">
@@ -192,7 +260,7 @@ function NodeFlowComponent() {
               </Sidebar>
               <div style={{ flex: 1, height: "100%", position: "relative" }}>
                 <FlowCanvas
-                  nodes={nodesWithValues}
+                  nodes={nodesWithData}
                   edges={edges}
                   nodeTypes={nodeTypes}
                   height={height}
@@ -211,10 +279,10 @@ function NodeFlowComponent() {
                 />
               </div>
             </SidebarProvider>
-        </ReactFlowProvider>
-      </SetNodeValuesContext.Provider>
-    </SetNodesContext.Provider>
-          </div>
+          </ReactFlowProvider>
+        </SetNodeValuesContext.Provider>
+      </SetNodesDictContext.Provider>
+    </div>
   );
 }
 

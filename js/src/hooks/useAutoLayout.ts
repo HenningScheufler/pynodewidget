@@ -21,18 +21,24 @@ function getNodeDimensions(node: Node): { width: number; height: number } {
     };
   }
   
-  // Estimate based on data
+  // Estimate based on grid data
   const data = node.data || {};
   const baseHeight = 80; // Header + padding
-  const fieldHeight = 60; // Approximate height per field
+  const componentHeight = 50; // Approximate height per component row
   
-  // Count fields from parameters
-  let fieldCount = 0;
-  if (data.parameters?.properties) {
-    fieldCount = Object.keys(data.parameters.properties).length;
+  // Count components from grid cells
+  let componentCount = 0;
+  if (data.grid?.cells) {
+    // Count total components across all cells
+    for (const cell of data.grid.cells) {
+      componentCount += cell.components?.length || 0;
+    }
+    // Estimate rows based on grid structure
+    const rowCount = data.grid.rows?.length || 1;
+    componentCount = Math.max(componentCount, rowCount * 2); // At least 2 components per row
   }
   
-  const estimatedHeight = baseHeight + (fieldCount * fieldHeight);
+  const estimatedHeight = baseHeight + (componentCount * componentHeight);
   
   return {
     width: node.width || DEFAULT_NODE_WIDTH,

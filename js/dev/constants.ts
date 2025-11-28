@@ -10,18 +10,13 @@
  */
 
 import type { NodeData } from './types';
-import { 
-  createHorizontalGridLayout, 
-  createVerticalGridLayout, 
-  createCompactGridLayout,
-  createTwoColumnGridLayout,
-  createSidebarGridLayout
-} from '../src/index';
 import type { 
   NodeGrid, 
   GridCell, 
   GridCoordinates, 
   CellLayout,
+  HandleConfig,
+  ComponentType,
   ButtonHandle,
   LabeledHandle,
   BaseHandle,
@@ -32,9 +27,7 @@ import type {
   HeaderComponent,
   ButtonComponent,
   DividerComponent,
-  ComponentType,
-  HandleConfig,
-  GridLayoutComponent
+  GridLayoutComponent,
 } from '../src/types/schema';
 
 // =============================================================================
@@ -272,37 +265,12 @@ function createHeaderConfig(
 // BASE NODE DATA
 // =============================================================================
 
-const baseNodeData = {
+/**
+ * Base sample node data using the new grid+components architecture
+ */
+const baseSampleNode: NodeData = {
   label: 'Data Processor',
-  parameters: {
-    type: 'object' as const,
-    properties: {
-      name: { 
-        type: 'string' as const, 
-        title: 'Name', 
-        default: 'processor' 
-      },
-      count: { 
-        type: 'number' as const, 
-        title: 'Count', 
-        default: 10 
-      },
-      enabled: { 
-        type: 'boolean' as const, 
-        title: 'Enabled', 
-        default: true 
-      }
-    },
-    required: ['name']
-  },
-  inputs: [
-    { id: 'input1', label: 'First Input' },
-    { id: 'input2', label: 'Second Input' }
-  ],
-  outputs: [
-    { id: 'output1', label: 'Result' },
-    { id: 'output2', label: 'Stats' }
-  ],
+  grid: createThreeColumnGrid(),
   values: {
     name: 'processor',
     count: 10,
@@ -310,10 +278,7 @@ const baseNodeData = {
   }
 };
 
-export const sampleNodeData: NodeData = {
-  ...baseNodeData,
-  gridLayout: createHorizontalGridLayout(),
-};
+export const sampleNodeData: NodeData = baseSampleNode;
 
 // =============================================================================
 // HANDLE TYPE TEMPLATES
@@ -328,7 +293,7 @@ export const nodeTemplatesByHandleType = {
     defaultData: { 
       ...sampleNodeData, 
       handleType: 'base' as const,
-      gridLayout: createHorizontalGridLayout()
+      grid: createThreeColumnGrid()
     }
   },
   button: {
@@ -339,7 +304,7 @@ export const nodeTemplatesByHandleType = {
     defaultData: { 
       ...sampleNodeData, 
       handleType: 'button' as const,
-      gridLayout: createHorizontalGridLayout()
+      grid: createThreeColumnGrid()
     }
   },
   labeled: {
@@ -350,7 +315,7 @@ export const nodeTemplatesByHandleType = {
     defaultData: { 
       ...sampleNodeData, 
       handleType: 'labeled' as const,
-      gridLayout: createHorizontalGridLayout()
+      grid: createThreeColumnGrid()
     }
   }
 } as const;
@@ -411,10 +376,10 @@ function createVerticalStackGrid(): NodeGrid {
       createGridCell(
         'top-cell',
         createCoordinates(1, 1),
-        createFlexLayout('row', { justify: 'center', gap: SPACING.md }),
+        createFlexLayout('row', { justify: 'space-between', gap: SPACING.md }),
         [
-          createLabeledHandle('x', 'input', 'X'),
-          createLabeledHandle('y', 'input', 'Y'),
+          createButtonHandle('input1', 'input', 'First Input'),
+          createButtonHandle('input2', 'input', 'Second Input'),
         ]
       ),
       createGridCell(
@@ -422,8 +387,9 @@ function createVerticalStackGrid(): NodeGrid {
         createCoordinates(2, 1),
         createFlexLayout('column', { gap: SPACING.md }),
         [
-          createHeader('header', 'Calculator', '🧮'),
-          createSelectField('operation', 'Operation', 'add', ['add', 'multiply', 'subtract', 'divide']),
+          createTextField('name', 'Name', 'processor'),
+          createNumberField('count', 'Count', 10, 1, 100),
+          createBoolField('enabled', 'Enabled', true),
         ]
       ),
       createGridCell(
@@ -431,7 +397,7 @@ function createVerticalStackGrid(): NodeGrid {
         createCoordinates(3, 1),
         createFlexLayout('row', { justify: 'center' }),
         [
-          createLabeledHandle('result', 'output', 'Result'),
+          createButtonHandle('output1', 'output', 'Result'),
         ]
       ),
     ],
@@ -825,153 +791,220 @@ function createDeeplyNestedGrid(): NodeGrid {
 }
 
 // =============================================================================
-// EXPORTED GRID LAYOUT EXAMPLES
+// COMPATIBILITY WRAPPERS FOR LEGACY LAYOUT NAMES
 // =============================================================================
 
-export const gridLayoutExamples = [
-  // Legacy layouts using old system
+/**
+ * Horizontal grid layout - simple three-column layout
+ * Alias for createThreeColumnGrid()
+ */
+function createHorizontalGridLayout(): NodeGrid {
+  return createThreeColumnGrid();
+}
+
+/**
+ * Vertical grid layout - stacked layout with inputs on top, fields in middle, outputs on bottom
+ * Alias for createVerticalStackGrid()
+ */
+function createVerticalGridLayout(): NodeGrid {
+  return createVerticalStackGrid();
+}
+
+/**
+ * Compact grid layout - just fields, no handles
+ */
+function createCompactGridLayout(): NodeGrid {
+  return {
+    rows: ['1fr'],
+    columns: ['1fr'],
+    gap: SPACING.sm,
+    cells: [
+      createGridCell(
+        'content-cell',
+        createCoordinates(1, 1),
+        createFlexLayout('column', { gap: SPACING.sm }),
+        [
+          createTextField('name', 'Name', 'processor'),
+          createNumberField('count', 'Count', 10, 1, 100),
+          createBoolField('enabled', 'Enabled', true),
+        ]
+      ),
+    ],
+  };
+}
+
+/**
+ * Two-column grid layout - handles on top row, fields below
+ */
+function createTwoColumnGridLayout(): NodeGrid {
+  return {
+    rows: [COLUMN_WIDTHS.auto, COLUMN_WIDTHS.full],
+    columns: [COLUMN_WIDTHS.auto, COLUMN_WIDTHS.auto],
+    gap: SPACING.md,
+    cells: [
+      createGridCell(
+        'handles-left',
+        createCoordinates(1, 1),
+        createFlexLayout('column', { gap: SPACING.sm }),
+        [
+          createButtonHandle('input1', 'input', 'Input 1'),
+          createButtonHandle('input2', 'input', 'Input 2'),
+        ]
+      ),
+      createGridCell(
+        'handles-right',
+        createCoordinates(1, 2),
+        createFlexLayout('column', { gap: SPACING.sm }),
+        [
+          createButtonHandle('output1', 'output', 'Output'),
+        ]
+      ),
+      createGridCell(
+        'content',
+        createCoordinates(2, 1, 1, 2), // Span both columns
+        createFlexLayout('column', { gap: SPACING.md }),
+        [
+          createTextField('name', 'Name', 'processor'),
+          createNumberField('count', 'Count', 10, 1, 100),
+          createBoolField('enabled', 'Enabled', true),
+        ]
+      ),
+    ],
+  };
+}
+
+/**
+ * Sidebar grid layout - fixed sidebars with center content
+ */
+function createSidebarGridLayout(): NodeGrid {
+  return {
+    rows: ['1fr'],
+    columns: [COLUMN_WIDTHS.narrow, COLUMN_WIDTHS.full, COLUMN_WIDTHS.narrow],
+    gap: SPACING.md,
+    cells: [
+      createGridCell(
+        'left-sidebar',
+        createCoordinates(1, 1),
+        createFlexLayout('column', { gap: SPACING.sm }),
+        [
+          createButtonHandle('input1', 'input', 'In 1'),
+          createButtonHandle('input2', 'input', 'In 2'),
+        ]
+      ),
+      createGridCell(
+        'center-content',
+        createCoordinates(1, 2),
+        createFlexLayout('column', { gap: SPACING.md }),
+        [
+          createHeader('header', 'Processor', '⚙️', COLORS.blue),
+          createDivider('div1'),
+          createTextField('name', 'Name', 'processor'),
+          createNumberField('count', 'Count', 10, 1, 100),
+          createBoolField('enabled', 'Enabled', true),
+        ]
+      ),
+      createGridCell(
+        'right-sidebar',
+        createCoordinates(1, 3),
+        createFlexLayout('column', { gap: SPACING.sm }),
+        [
+          createButtonHandle('output1', 'output', 'Out'),
+        ]
+      ),
+    ],
+  };
+}
+
+// =============================================================================
+// NODE EXAMPLES
+// =============================================================================
+
+export const nodeExamples = [
+  // Simple starter example
   {
-    type: 'horizontal_grid',
-    label: 'Horizontal Grid Layout',
-    icon: '↔️',
-    description: 'Classic horizontal layout: inputs | parameters | outputs',
+    type: 'simple_node',
+    label: '✨ Simple Node',
+    icon: '✨',
+    description: 'Minimal example: single text field',
     defaultData: {
-      ...baseNodeData,
-      label: 'Horizontal Layout',
-      gridLayout: createHorizontalGridLayout(),
-      header: createHeaderConfig('↔️', COLORS.blue),
-    }
-  },
-  {
-    type: 'vertical_grid',
-    label: 'Vertical Grid Layout',
-    icon: '↕️',
-    description: 'Vertical stacked layout: inputs / parameters / outputs',
-    defaultData: {
-      ...baseNodeData,
-      label: 'Vertical Layout',
-      gridLayout: createVerticalGridLayout(),
-      header: createHeaderConfig('↕️', COLORS.green),
-    }
-  },
-  {
-    type: 'compact_grid',
-    label: 'Compact Grid Layout',
-    icon: '⬜',
-    description: 'Minimal layout: just parameters',
-    defaultData: {
-      ...baseNodeData,
-      label: 'Compact Layout',
-      gridLayout: createCompactGridLayout(),
-      inputs: [] as HandleConfig[],
-      outputs: [] as HandleConfig[],
-      header: createHeaderConfig('⬜', COLORS.purple),
-    }
-  },
-  {
-    type: 'two_column_grid',
-    label: 'Two-Column Grid Layout',
-    icon: '⚡',
-    description: 'Two columns: handles on top, parameters below',
-    defaultData: {
-      ...baseNodeData,
-      label: 'Two-Column Layout',
-      gridLayout: createTwoColumnGridLayout(),
-      header: createHeaderConfig('⚡', COLORS.amber),
-    }
-  },
-  {
-    type: 'sidebar_grid',
-    label: 'Sidebar Grid Layout',
-    icon: '📊',
-    description: 'Fixed sidebars with flexible center content',
-    defaultData: {
-      ...baseNodeData,
-      label: 'Sidebar Layout',
-      gridLayout: createSidebarGridLayout(),
-      header: createHeaderConfig('📊', COLORS.red),
-      style: {
-        minWidth: '400px'
+      label: 'Simple Node',
+      grid: {
+        rows: ['1fr'],
+        columns: ['1fr'],
+        gap: '8px',
+        cells: [
+          createGridCell(
+            'content',
+            createCoordinates(1, 1),
+            createFlexLayout('column', { gap: '8px' }),
+            [
+              createTextField('message', 'Message', 'Hello World!', 'Enter your message'),
+            ]
+          ),
+        ],
+      },
+      header: createHeaderConfig('✨', COLORS.blue),
+      values: {
+        message: 'Hello World!'
       }
     }
   },
-  // New three-layer grid system examples
+  // Horizontal layout
   {
-    type: 'three_layer_horizontal',
-    label: '🆕 Three-Column (New)',
-    icon: '🎯',
-    description: 'NEW: Component-based three-column layout with button handles',
+    type: 'horizontal',
+    label: '↔️ Horizontal',
+    icon: '↔️',
+    description: 'Three columns: inputs | fields | outputs',
     defaultData: {
-      label: 'Three-Column Layout',
-      grid: createThreeColumnGrid(),
-      header: createHeaderConfig('🎯', COLORS.cyan),
+      label: 'Horizontal Node',
+      grid: createHorizontalGridLayout(),
+      header: createHeaderConfig('↔️', COLORS.green),
+      values: {
+        name: 'processor',
+        count: 10,
+        enabled: true
+      }
     }
   },
+  // Vertical layout
   {
-    type: 'three_layer_vertical',
-    label: '🆕 Vertical Stack (New)',
-    icon: '📚',
-    description: 'NEW: Component-based vertical stack with labeled handles',
+    type: 'vertical',
+    label: '↕️ Vertical',
+    icon: '↕️',
+    description: 'Stacked: inputs / fields / outputs',
     defaultData: {
-      label: 'Vertical Stack',
-      grid: createVerticalStackGrid(),
-      header: createHeaderConfig('📚', COLORS.violet),
+      label: 'Vertical Node',
+      grid: createVerticalGridLayout(),
+      header: createHeaderConfig('↕️', COLORS.cyan),
+      values: {
+        name: 'processor',
+        count: 10,
+        enabled: true
+      }
     }
   },
+  // Component-based with custom header
   {
-    type: 'three_layer_header_body',
-    label: '🆕 Header/Body (New)',
+    type: 'header_body',
+    label: '🎨 Header & Body',
     icon: '🎨',
-    description: 'NEW: Component-based header/body layout with handles in header',
+    description: 'Custom header with handles and form body',
     defaultData: {
       label: 'Transform Node',
       grid: createHeaderBodyGrid(),
-      header: { show: false }, // Header is part of the grid now
+      header: { show: false },
     }
   },
+  // Complex with nested components
   {
-    type: 'three_layer_complex',
-    label: '🆕 Complex Grid (New)',
+    type: 'complex',
+    label: '🚀 Complex Layout',
     icon: '🚀',
-    description: 'NEW: Advanced component-based layout with header, footer, and action buttons',
+    description: 'Advanced layout with header, footer, and buttons',
     defaultData: {
       label: 'Advanced Processor',
       grid: createComplexGrid(),
-      header: { show: false }, // Header is part of the grid
-    }
-  },
-  // Nested grid layout examples
-  {
-    type: 'nested_grid_sidebar',
-    label: '🌟 Nested Sidebar',
-    icon: '🔲',
-    description: 'NESTED: Sidebar layout with nested grid for organized sections',
-    defaultData: {
-      label: 'Nested Sidebar Layout',
-      grid: createNestedSidebarGrid(),
       header: { show: false },
     }
   },
-  {
-    type: 'nested_grid_dashboard',
-    label: '🌟 Nested Dashboard',
-    icon: '📊',
-    description: 'NESTED: Dashboard with nested grids for widget panels',
-    defaultData: {
-      label: 'Nested Dashboard',
-      grid: createNestedDashboardGrid(),
-      header: { show: false },
-    }
-  },
-  {
-    type: 'nested_grid_deep',
-    label: '🌟 Deep Nesting',
-    icon: '🎯',
-    description: 'NESTED: Three levels of nesting demonstration',
-    defaultData: {
-      label: 'Deep Nested Layout',
-      grid: createDeeplyNestedGrid(),
-      header: { show: false },
-    }
-  }
 ];
