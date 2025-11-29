@@ -31,10 +31,12 @@ class NodeFlowWidget(anywidget.AnyWidget):
     _esm = pathlib.Path(__file__).parent / "static" / "index.js"
     _css = pathlib.Path(__file__).parent / "static" / "index.css"
     
+    # defines the available node types/templates
+    node_templates = t.List(trait=t.Dict()).tag(sync=True)
+
     # Graph data - nodes as dict keyed by ID for efficient per-node updates
     nodes = t.Dict(trait=t.Dict()).tag(sync=True)
     edges = t.List(trait=t.Dict()).tag(sync=True)
-    node_templates = t.List(trait=t.Dict()).tag(sync=True)
     
     # Track node values separately for efficient sync - keyed by node ID
     # Using ObservableDictTrait for automatic sync on mutations
@@ -47,130 +49,124 @@ class NodeFlowWidget(anywidget.AnyWidget):
     fit_view = t.Bool(default_value=True).tag(sync=True)
     height = t.Unicode(default_value="600px").tag(sync=True)
     
-    def update_node_value(self, node_id: str, key: str, value: Any) -> None:
-        """Update a specific value for a node. Auto-syncs to frontend.
+    @property
+    def values(self) -> ObservableDict:
+        """Direct dict-like access to node values (v2.0 simplified API).
         
-        Args:
-            node_id: ID of the node to update
-            key: Key within the node's values dict
-            value: New value to set
-            
-        Example:
-            >>> flow.update_node_value("processor-1", "workers", 20)
+        Provides Pythonic access without wrapper methods.
+        
+        Examples:
+            >>> # Set single value
+            >>> widget.values["processor-1"]["threshold"] = 0.8
+            >>> 
+            >>> # Set multiple values
+            >>> widget.values["processor-1"] = {"threshold": 0.8, "enabled": True}
+            >>> 
+            >>> # Get single value
+            >>> value = widget.values["processor-1"].get("threshold", 0.5)
+            >>> 
+            >>> # Get all values for a node
+            >>> all_values = widget.values["processor-1"]
         """
-        if node_id not in self.node_values:
-            self.node_values[node_id] = {}
-        self.node_values[node_id][key] = value
+        return self.node_values
     
-    def get_node_values(self, node_id: str) -> Dict[str, Any]:
-        """Get all values for a specific node.
+    @property
+    def templates(self) -> List[Dict[str, Any]]:
+        """Alias for node_templates (v2.0 simplified API).
         
-        Args:
-            node_id: ID of the node
-            
         Returns:
-            Dictionary of values for the node, or empty dict if not found
+            List of registered node type definitions.
             
         Example:
-            >>> values = flow.get_node_values("processor-1")
-            >>> workers = values.get("workers", 4)
+            >>> for template in widget.templates:
+            ...     print(template['label'])
         """
-        return self.node_values.get(node_id, {})
+        return self.node_templates
     
-    def set_node_values(self, node_id: str, values: Dict[str, Any]) -> None:
-        """Set multiple values for a node at once. Auto-syncs to frontend.
-        
-        Args:
-            node_id: ID of the node
-            values: Dictionary of values to set
-            
-        Example:
-            >>> flow.set_node_values("processor-1", {"workers": 8, "progress": 50})
-        """
-        if node_id not in self.node_values:
-            self.node_values[node_id] = {}
-        self.node_values[node_id].update(values)
-    
-    def get_node_value(self, node_id: str, key: str, default: Any = None) -> Any:
-        """Get a specific value from a node.
-        
-        Args:
-            node_id: ID of the node
-            key: Key of the value to get
-            default: Default value if not found
-            
-        Returns:
-            The value, or default if not found
-            
-        Example:
-            >>> workers = flow.get_node_value("processor-1", "workers", 4)
-        """
-        values = self.get_node_values(node_id)
-        return values.get(key, default)
-    
-    def __init__(self, nodes: Optional[List[Type[Any]]] = None, height: str = "600px", **kwargs: Any) -> None:
+    def __init__(self, height: str = "600px", **kwargs: Any) -> None:
         """Initialize the NodeFlowWidget.
         
         Args:
-            nodes: Optional list of node classes implementing NodeFactory protocol.
-                   Each class will be validated and registered automatically.
             height: Height of the widget canvas (default: "600px")
             **kwargs: Additional widget configuration options
         """
         super().__init__(**kwargs)
         self.height = height
-        
-        # node_values is automatically an ObservableDict via ObservableDictTrait
-        # No need to manually wrap - the trait handles it
-        
-        # Register node classes if provided
-        if nodes:
-            for node_class in nodes:
-                self.register_node_type(node_class)
     
-    def register_node_type(
+    def add_node_type(
         self,
-        node_class: Type[Any],
-        type_name: Optional[str] = None
+        type_name: str,
+        label: str,
+        grid_layout: Any,
+        icon: str = "",
+        description: str = "",
+        style: Optional[Dict[str, Any]] = None
     ) -> "NodeFlowWidget":
-        """Register a node class implementing the NodeFactory protocol.
+        """Add node type with grid layout (v2.0 simplified API).
         
-        This method extracts metadata from the node class and registers
-        it as a node type that can be instantiated in the visual editor.
+        Simplified method with clearer naming - no JSON schema required.
+        Grid layout defines all UI components directly.
         
         Args:
-            node_class: Class implementing NodeFactory protocol (typically a
-                       subclass of JsonSchemaNodeWidget)
-            type_name: Optional custom type name. If not provided, uses the
-                      class name (converted to snake_case)
-        
+            type_name: Unique type identifier
+            label: Display label for the node
+            grid_layout: Grid layout configuration (NodeGrid model or dict).
+                        Use helpers from grid_layouts module:
+                        - create_three_column_grid()
+                        - create_vertical_stack_grid()
+                        - create_header_body_grid()
+            icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
+            description: Description shown in the panel
+            style: Style configuration dict with 'minWidth', 'maxWidth', 'shadow', etc.
+            
         Returns:
             Self for method chaining
-        
-        Raises:
-            AttributeError: If required attributes (label, parameters) are missing
-            TypeError: If parameters is not a Pydantic BaseModel subclass
             
         Example:
-            >>> flow = NodeFlowWidget()
-            >>> flow.register_node_type(MyCustomNode)
-            >>> flow.register_node_type(AnotherNode, type_name="custom_name")
+            >>> from pynodewidget.grid_layouts import create_three_column_grid
+            >>> from pynodewidget.models import ButtonHandle, NumberField
+            >>> 
+            >>> widget.add_node_type(
+            ...     type_name="processor",
+            ...     label="Data Processor",
+            ...     icon="⚙️",
+            ...     grid_layout=create_three_column_grid(
+            ...         left_components=[ButtonHandle(id="in", label="Input", handle_type="input")],
+            ...         center_components=[NumberField(id="value", label="Value", value=42)],
+            ...         right_components=[ButtonHandle(id="out", label="Output", handle_type="output")]
+            ...     )
+            ... )
+            >>> 
+            >>> # Access values with Pythonic dict syntax
+            >>> widget.values["processor-1"]["value"] = 50
         """
-        from .protocols import NodeMetadata
-        import re
+        from .models import NodeGrid
         
-        # Generate type_name from class name if not provided
-        if type_name is None:
-            # Convert CamelCase to snake_case
-            type_name = re.sub(r'(?<!^)(?=[A-Z])', '_', node_class.__name__).lower()
+        # Convert NodeGrid model to dict if needed
+        if isinstance(grid_layout, NodeGrid):
+            grid_layout = grid_layout.model_dump()
         
-        # Extract metadata from the node class (this will validate the class)
-        metadata = NodeMetadata.from_node_class(node_class, type_name)
+        # Extract default values from grid layout components
+        default_values = {}
+        if isinstance(grid_layout, dict) and "cells" in grid_layout:
+            for cell in grid_layout["cells"]:
+                if "components" in cell:
+                    for component in cell["components"]:
+                        # Extract value from components that have an id and value
+                        if isinstance(component, dict) and "id" in component and "value" in component:
+                            default_values[component["id"]] = component["value"]
         
-        # Convert to template dict and add to node_templates
-        template = metadata.to_dict()
-        self.node_templates = self.node_templates + [template]
-        return self
+        # Call the existing implementation with extracted defaults
+        return self.add_node_type_from_schema(
+            json_schema={},
+            type_name=type_name,
+            label=label,
+            description=description,
+            icon=icon,
+            grid_layout=grid_layout,
+            style=style,
+            _default_values_override=default_values
+        )
     
     def add_node_type_from_schema(
         self, 
@@ -180,9 +176,8 @@ class NodeFlowWidget(anywidget.AnyWidget):
         description: str = "",
         icon: str = "",
         grid_layout: Optional[Dict[str, Any]] = None,
-        header: Optional[Dict[str, Any]] = None,
-        footer: Optional[Dict[str, Any]] = None,
-        style: Optional[Dict[str, Any]] = None
+        style: Optional[Dict[str, Any]] = None,
+        _default_values_override: Optional[Dict[str, Any]] = None
     ):
         """Add a node type from a JSON schema with grid layout support.
         
@@ -193,8 +188,10 @@ class NodeFlowWidget(anywidget.AnyWidget):
             description: Description shown in the panel
             icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
             grid_layout: Grid layout configuration (use helpers from grid_layouts module).
+                        Can be a dict or a NodeGrid Pydantic model.
                         If not provided, defaults to vertical layout with JSON schema fields.
             style: Style configuration dict with 'minWidth', 'maxWidth', 'shadow', etc.
+            _default_values_override: Internal parameter to override default values extraction
             
         Example:
             >>> from pynodewidget.grid_layouts import create_three_column_grid
@@ -213,19 +210,26 @@ class NodeFlowWidget(anywidget.AnyWidget):
             ... )
         """
         from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
-        from .models import NodeDefinition, NodeTemplate
+        from .models import NodeDefinition, NodeTemplate, NodeGrid
         
-        # Initialize default values from schema
-        default_values = {}
-        if json_schema and "properties" in json_schema:
-            for key, prop in json_schema["properties"].items():
-                if "default" in prop:
-                    default_values[key] = prop["default"]
+        # Initialize default values from schema or override
+        if _default_values_override is not None:
+            default_values = _default_values_override
+        else:
+            default_values = {}
+            if json_schema and "properties" in json_schema:
+                for key, prop in json_schema["properties"].items():
+                    if "default" in prop:
+                        default_values[key] = prop["default"]
         
         # Use vertical stack grid with JSON schema fields as default if none provided
         if grid_layout is None:
             field_components = json_schema_to_components(json_schema, default_values)
             grid_layout = create_vertical_stack_grid(middle_components=field_components)
+        
+        # Convert NodeGrid model to dict if needed
+        if isinstance(grid_layout, NodeGrid):
+            grid_layout = grid_layout.model_dump()
         
         # Build NodeDefinition (visual structure only)
         definition_dict = {
@@ -255,37 +259,6 @@ class NodeFlowWidget(anywidget.AnyWidget):
             raise ValueError(f"Failed to create valid node template: {e}")
         
         return self
-    
-    def add_node_type_from_pydantic(
-        self, 
-        model_class: Type[Any],  # Pydantic BaseModel class
-        type_name: str,
-        label: str,
-        description: str = "",
-        icon: str = "",
-        grid_layout: Optional[Dict[str, Any]] = None
-    ) -> "NodeFlowWidget":
-        """Add a node type from a Pydantic model.
-        
-        Args:
-            model_class: Pydantic model class
-            type_name: Unique type identifier
-            label: Display label for the node
-            description: Description shown in the panel
-            icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
-            grid_layout: Grid layout configuration (use helpers from grid_layouts module)
-        """
-        try:
-            from pydantic import BaseModel
-            if not isinstance(model_class, type) or not issubclass(model_class, BaseModel):
-                raise ValueError("model_class must be a Pydantic BaseModel class")
-            schema = model_class.model_json_schema()
-        except ImportError:
-            raise ImportError("pydantic is required for add_node_type_from_pydantic")
-        
-        return self.add_node_type_from_schema(
-            schema, type_name, label, description, icon, grid_layout
-        )
     
     def export_json(self, filename: str = "flow.json") -> str:
         """Export the current flow to a JSON file.
@@ -323,20 +296,6 @@ class NodeFlowWidget(anywidget.AnyWidget):
         
         print(f"✓ Flow loaded from {filename}")
         return self
-    
-    def get_node_data(self, node_id: str) -> Optional[Dict[str, Any]]:
-        """Get the data for a specific node.
-        
-        Args:
-            node_id: Node ID
-        
-        Returns:
-            Node data dict or None if not found
-        """
-        node = self.nodes.get(node_id)
-        if node:
-            return node.get("data", {})
-        return None
     
     def clear(self) -> None:
         """Clear all nodes and edges."""

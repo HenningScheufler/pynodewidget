@@ -65,7 +65,8 @@ class TestNodeInstantiation:
         node = MinimalNode()
         
         assert node.data["label"] == "Minimal Node"
-        assert "grid" in node.data
+        assert "definition" in node.data
+        assert "grid" in node.data["definition"]
         assert node.data["values"]["name"] == "test"
         assert node.data["values"]["value"] == 42
     
@@ -81,19 +82,22 @@ class TestNodeInstantiation:
         node = FullNode()
         
         assert node.data["label"] == "Full Node"
-        assert "grid" in node.data
+        assert "definition" in node.data
+        assert "grid" in node.data["definition"]
         # Verify grid has proper structure
-        assert "cells" in node.data["grid"]
-        assert "rows" in node.data["grid"]
-        assert "columns" in node.data["grid"]
+        grid = node.data["definition"]["grid"]
+        assert "cells" in grid
+        assert "rows" in grid
+        assert "columns" in grid
     
     def test_typed_handles_conversion(self):
         """Test Pydantic models are converted to handle components in grid."""
         node = TypedHandlesNode()
         
         # Check grid has cells with handle components
-        assert "grid" in node.data
-        assert "cells" in node.data["grid"]
+        assert "definition" in node.data
+        assert "grid" in node.data["definition"]
+        assert "cells" in node.data["definition"]["grid"]
         # Handles should be converted to components in the grid
     
     def test_standalone_widget_mode(self):
@@ -215,7 +219,7 @@ class TestFactoryMethods:
         schema = {"properties": {"a": {"type": "string"}}}
         widget = NodeBuilder.from_schema(schema, label="Test")
         
-        # Should have grid structure
+        # NodeBuilder.from_schema returns data with grid directly (not wrapped in definition)
         assert "grid" in widget.data
         assert "cells" in widget.data["grid"]
 
@@ -287,7 +291,7 @@ class TestSchemaGeneration:
     def test_schema_includes_properties(self):
         """Test that grid layout is generated."""
         node = FullNode()
-        grid = node.data["grid"]
+        grid = node.data["definition"]["grid"]
         
         assert "cells" in grid
         assert "rows" in grid
@@ -296,7 +300,7 @@ class TestSchemaGeneration:
     def test_schema_includes_constraints(self):
         """Test that grid layout has proper structure."""
         node = FullNode()
-        grid = node.data["grid"]
+        grid = node.data["definition"]["grid"]
         
         # Grid should have standard three-column layout
         assert isinstance(grid["rows"], list)

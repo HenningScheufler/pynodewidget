@@ -119,7 +119,7 @@ def test_complete_workflow():
         # Verify data
         assert len(widget2.nodes) == 1
         assert widget2.nodes["node1"]["id"] == "node1"
-        assert widget2.get_node_data("node1")["label"] == "Processor 1"
+        assert widget2.nodes["node1"]["data"]["label"] == "Processor 1"
         
     finally:
         pathlib.Path(filename).unlink(missing_ok=True)
