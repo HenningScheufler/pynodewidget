@@ -175,16 +175,19 @@ Discriminated union of all component types.
 
 ```typescript
 type ComponentType =
-  | { type: "text-field", id: string, label: string, value?: string }
-  | { type: "number-field", id: string, label: string, value?: number, min?: number, max?: number }
-  | { type: "bool-field", id: string, label: string, value?: boolean }
-  | { type: "base-handle", id: string, handleType: "source" | "target", position?: string }
-  | { type: "header", title: string, icon?: string }
-  | { type: "grid-layout", grid: NodeGrid }  // Recursive!
+  | { type: "text", id: string, label: string, value?: string }
+  | { type: "number", id: string, label: string, value?: number, min?: number, max?: number }
+  | { type: "bool", id: string, label: string, value?: boolean }
+  | { type: "select", id: string, label: string, value?: string, options: string[] }
+  | { type: "base-handle", id: string, handle_type: "input" | "output", label: string }
+  | { type: "labeled-handle", id: string, handle_type: "input" | "output", label: string }
+  | { type: "button-handle", id: string, handle_type: "input" | "output", label: string }
+  | { type: "header", id: string, title: string, icon?: string }
+  | { type: "grid-layout", id: string, ...grid: NodeGrid }  // Recursive!
   | ...
 ```
 
-**Key Feature:** Type safety via Valibot schemas. Invalid component configurations are caught at build time.
+**Key Feature:** Type safety via Valibot discriminated unions. Invalid component configurations are caught at runtime and development time.
 
 ### Template vs Instance
 
@@ -381,21 +384,20 @@ Follow the `useModelState` pattern from `@anywidget/react` to access model state
 ## Component Reference Table
 
 | Type | Purpose | Key Props |
-|------|---------|-----------|
-| `text-field` | Text input | `id, label, value` |
-| `number-field` | Number input | `id, label, value, min, max, step` |
-| `bool-field` | Checkbox | `id, label, value` |
-| `select-field` | Dropdown | `id, label, value, options` |
-| `progress-field` | Progress bar | `id, label, value, max` |
-| `base-handle` | Connection point | `id, handleType, position` |
-| `labeled-handle` | Handle with label | `id, handleType, label, position` |
-| `button-handle` | Clickable handle | `id, handleType, label, onClick` |
-| `header` | Node header | `title, icon` |
-| `footer` | Node footer | `content` |
-| `button` | Button | `label, onClick` |
-| `divider` | Horizontal line | `style` |
-| `spacer` | Empty space | `size` |
-| `grid-layout` | Nested grid | `grid: NodeGrid` |
+|------|---------|--------|
+| `text` | Text input | `id, label, value, placeholder` |
+| `number` | Number input | `id, label, value, min, max` |
+| `bool` | Checkbox | `id, label, value` |
+| `select` | Dropdown | `id, label, value, options` |
+| `base-handle` | Minimal dot handle | `id, handle_type, label, dataType` |
+| `labeled-handle` | Handle with text label | `id, handle_type, label, dataType` |
+| `button-handle` | Button-styled handle | `id, handle_type, label, dataType` |
+| `header` | Node header | `id, title, icon, show_minimize, show_delete` |
+| `footer` | Node footer | `id, text` |
+| `button` | Button | `id, label, variant` |
+| `divider` | Horizontal line | `id` |
+| `spacer` | Empty space | `id, size` |
+| `grid-layout` | Nested grid | `id, rows, columns, cells` |
 
 **Full schemas:** See `src/components/ComponentFactory.tsx` and individual component files.
 
@@ -404,40 +406,33 @@ Follow the `useModelState` pattern from `@anywidget/react` to access model state
 - **[Extension Guide](extending.md)** - Copy-paste recipes for adding custom components
 - **[JavaScript Development](javascript.md)** - Setup and build commands
 - **[Hooks Reference](hooks.md)** - Available React hooks
-class FieldRegistry {
-  private renderers = new Map<string, FieldRenderer>();
-  
-  register(type: string, renderer: FieldRenderer): void {
-    this.renderers.set(type, renderer);
-  }
-  
-  get(type: string): FieldRenderer | undefined {
-    return this.renderers.get(type);
-  }
-}
+The architecture uses **Valibot discriminated unions** instead of registries. Components are validated at runtime using schemas defined in each component file.
 
-export const fieldRegistry = new FieldRegistry();
-```
-
-**LayoutFactory** (`components/layouts/LayoutFactory.tsx`):
+**Example component integration:**
 ```typescript
-class LayoutFactory {
-  private layouts = new Map<string, React.ComponentType<LayoutProps>>();
-  
-  constructor() {
-    this.layouts.set("horizontal", HorizontalLayout);
-    this.layouts.set("vertical", VerticalLayout);
-    this.layouts.set("compact", CompactLayout);
-  }
-  
-  getLayout(type: string): React.ComponentType<LayoutProps> {
-    return this.layouts.get(type) || HorizontalLayout;
-  }
+// 1. Define schema in component file
+export const TextFieldSchema = v.object({
+  id: v.string(),
+  type: v.literal("text"),
+  label: v.string(),
+  value: v.optional(v.string()),
+  placeholder: v.optional(v.string())
+});
+
+// 2. Add to ComponentFactory discriminated union
+export const ComponentTypeSchema = v.variant("type", [
+  TextFieldSchema,
+  NumberFieldSchema,
+  // ... other schemas
+]);
+
+// 3. Handle in ComponentFactory switch
+switch (component.type) {
+  case "text":
+    return <StringField component={component} onValueChange={onValueChange} />;
+  // ...
 }
 ```
-
-**HandleFactory** (`components/handles/HandleFactory.tsx`):
-Similar pattern for handle types.
 
 ### State Flow
 
@@ -588,7 +583,7 @@ flow.update_node_value("node-1", "threshold", 0.8)
 ### JavaScript Side
 
 - **ReactFlow** handles virtualization automatically
-- **Zustand** provides efficient state updates
+- **React Context** provides efficient state updates via `useModelState` hook
 - **React.memo** used for expensive components
 
 ### Optimization Tips

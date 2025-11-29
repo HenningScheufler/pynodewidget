@@ -6,7 +6,6 @@ from .widget import NodeFlowWidget
 from .protocols import NodeFactory, NodeMetadata
 from .json_schema_node import NodeBuilder
 from .observable_dict import ObservableDict
-from . import node_builder
 from . import grid_layouts
 from . import models
 
@@ -16,7 +15,6 @@ __all__ = [
     "NodeMetadata",
     "NodeBuilder",
     "ObservableDict",
-    "node_builder",
     "grid_layouts",
     "models",
 ]

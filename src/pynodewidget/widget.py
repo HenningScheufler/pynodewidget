@@ -3,9 +3,55 @@
 import pathlib
 import anywidget
 import traitlets as t
-from typing import List, Dict, Any, Optional, Type
+from typing import List, Dict, Any, Optional, Type, Set
 import json
 from .observable_dict import ObservableDict, ObservableDictTrait
+
+
+def _validate_unique_component_ids(grid_layout: Dict[str, Any]) -> None:
+    """Validate that all component IDs in a grid layout are unique.
+    
+    Recursively traverses the grid layout structure to find all components,
+    including nested grid layouts, and ensures no duplicate IDs exist.
+    
+    Args:
+        grid_layout: Grid layout configuration dict
+        
+    Raises:
+        ValueError: If duplicate component IDs are found
+    """
+    def collect_ids(layout_dict: Dict[str, Any], ids: Set[str]) -> None:
+        """Recursively collect all component IDs from layout."""
+        if not isinstance(layout_dict, dict):
+            return
+            
+        # Check if this is a grid layout with cells
+        if "cells" in layout_dict:
+            for cell in layout_dict.get("cells", []):
+                if not isinstance(cell, dict):
+                    continue
+                    
+                # Process components in the cell
+                for component in cell.get("components", []):
+                    if not isinstance(component, dict):
+                        continue
+                    
+                    # Check if component has an ID
+                    if "id" in component:
+                        comp_id = component["id"]
+                        if comp_id in ids:
+                            raise ValueError(
+                                f"Duplicate component ID found: '{comp_id}'. "
+                                f"All component IDs within a node must be unique."
+                            )
+                        ids.add(comp_id)
+                    
+                    # If this is a nested grid layout, recurse
+                    if component.get("type") == "grid-layout":
+                        collect_ids(component, ids)
+    
+    ids: Set[str] = set()
+    collect_ids(grid_layout, ids)
 
 
 class NodeFlowWidget(anywidget.AnyWidget):
@@ -230,6 +276,12 @@ class NodeFlowWidget(anywidget.AnyWidget):
         # Convert NodeGrid model to dict if needed
         if isinstance(grid_layout, NodeGrid):
             grid_layout = grid_layout.model_dump()
+        
+        # Validate that all component IDs are unique
+        try:
+            _validate_unique_component_ids(grid_layout)
+        except ValueError as e:
+            raise ValueError(f"Invalid grid layout for node type '{type_name}': {e}")
         
         # Build NodeDefinition (visual structure only)
         definition_dict = {

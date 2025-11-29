@@ -1,7 +1,7 @@
 """UI components for display and interaction."""
 
 from typing import Literal, Optional
-from pydantic import Field
+from pydantic import Field, model_validator
 from .base import Component
 
 
@@ -17,9 +17,22 @@ class HeaderComponent(Component):
 class ButtonComponent(Component):
     """Action button."""
     type: Literal["button"] = "button"
-    label: str = Field(..., description="Button text")
+    label: Optional[str] = Field(None, description="Button text (inferred from id if not provided)")
     action: str = Field(..., description="Action identifier")
-    variant: Literal["primary", "secondary"] = Field(default="primary", description="Button style")
+    value: int = Field(default=0, description="Click counter value")
+    variant: Literal["default", "destructive", "outline", "secondary", "ghost", "link"] = Field(
+        default="default", 
+        description="Button visual style"
+    )
+    size: Literal["default", "sm", "lg", "icon"] = Field(default="default", description="Button size")
+    disabled: bool = Field(default=False, description="Whether button is disabled")
+    
+    @model_validator(mode='after')
+    def _infer_label(self):
+        """Use id as label if not explicitly provided."""
+        if self.label is None:
+            self.label = self.id
+        return self
 
 
 class DividerComponent(Component):

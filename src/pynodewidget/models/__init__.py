@@ -14,6 +14,7 @@ from .components import (
     NumberField,
     BoolField,
     SelectField,
+    ProgressField,
     Field_,
     # UI Components
     HeaderComponent,
@@ -57,6 +58,7 @@ __all__ = [
     "NumberField",
     "BoolField",
     "SelectField",
+    "ProgressField",
     "Field_",
     "HeaderComponent",
     "ButtonComponent",

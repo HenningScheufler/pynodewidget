@@ -6,7 +6,7 @@ from pydantic import Field
 # Import all component types
 from .base import Component
 from .handles import BaseHandle, LabeledHandle, ButtonHandle, Handle
-from .fields import TextField, NumberField, BoolField, SelectField, Field_
+from .fields import TextField, NumberField, BoolField, SelectField, ProgressField, Field_
 from .ui import HeaderComponent, ButtonComponent, DividerComponent, SpacerComponent
 from .layouts import GridLayoutComponent
 
@@ -20,6 +20,7 @@ ComponentType = Annotated[
         NumberField,
         BoolField,
         SelectField,
+        ProgressField,
         HeaderComponent,
         ButtonComponent,
         DividerComponent,
@@ -42,6 +43,7 @@ __all__ = [
     "NumberField",
     "BoolField",
     "SelectField",
+    "ProgressField",
     "Field_",
     # UI Components
     "HeaderComponent",

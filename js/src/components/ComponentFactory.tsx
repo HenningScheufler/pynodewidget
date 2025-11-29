@@ -16,6 +16,7 @@ import { StringField, TextFieldSchema } from "./fields/StringField";
 import { NumberField, NumberFieldSchema } from "./fields/NumberField";
 import { BooleanField, BoolFieldSchema } from "./fields/BooleanField";
 import { SelectField, SelectFieldSchema } from "./fields/SelectField";
+import { ProgressField, ProgressFieldSchema } from "./fields/ProgressField";
 import { HeaderComponent, HeaderComponentSchema } from "./HeaderComponent";
 import { FooterComponent, FooterComponentSchema } from "./FooterComponent";
 import { ButtonComponent, ButtonComponentSchema } from "./ButtonComponent";
@@ -38,6 +39,7 @@ const BaseComponentTypeSchema = v.variant("type", [
   NumberFieldSchema,
   BoolFieldSchema,
   SelectFieldSchema,
+  ProgressFieldSchema,
   HeaderComponentSchema,
   FooterComponentSchema,
   ButtonComponentSchema,
@@ -75,6 +77,7 @@ export const ComponentTypeSchema = v.variant("type", [
   NumberFieldSchema,
   BoolFieldSchema,
   SelectFieldSchema,
+  ProgressFieldSchema,
   HeaderComponentSchema,
   FooterComponentSchema,
   ButtonComponentSchema,
@@ -136,6 +139,9 @@ export function ComponentFactory({ component, nodeId, onValueChange }: Component
     case "select":
       return <SelectField component={component} onValueChange={onValueChange} />;
     
+    case "progress":
+      return <ProgressField component={component} onValueChange={onValueChange} />;
+    
     case "header":
       return <HeaderComponent component={component} />;
     
@@ -143,7 +149,7 @@ export function ComponentFactory({ component, nodeId, onValueChange }: Component
       return <FooterComponent component={component} />;
     
     case "button":
-      return <ButtonComponent component={component} />;
+      return <ButtonComponent component={component} onValueChange={onValueChange} />;
     
     case "divider":
       return <DividerComponent component={component} />;

@@ -25,8 +25,8 @@ import * as v from "valibot";
 import type { PrimitiveFieldValue } from "../../types/schema";
 
 export const ColorFieldSchema = v.object({
-  type: v.literal("color-field"),
   id: v.string(),
+  type: v.literal("color"),
   label: v.string(),
   value: v.optional(v.string()),
 });
@@ -87,10 +87,12 @@ const BaseComponentTypeSchema = v.variant("type", [
 export function ComponentFactory({ component, nodeId, onValueChange }: Props) {
   switch (component.type) {
     // ... existing cases
-    case "color-field":
+    case "color":
       return <ColorField {...component} nodeId={nodeId} />;
     
     default:
+      const _exhaustiveCheck: never = component;
+      console.warn(`Unknown component type: ${(component as ComponentType).type}`);
       return null;
   }
 }
@@ -111,7 +113,7 @@ grid = {
         "layout": {"type": "flex", "direction": "column"},
         "components": [
             {
-                "type": "color-field",
+                "type": "color",
                 "id": "bg_color",
                 "label": "Background Color",
                 "value": "#ff5733"
@@ -134,12 +136,11 @@ Create `src/components/handles/MultiHandle.tsx`:
 import * as v from "valibot";
 
 export const MultiHandleSchema = v.object({
-  type: v.literal("multi-handle"),
   id: v.string(),
-  handleType: v.union([v.literal("source"), v.literal("target")]),
+  type: v.literal("multi-handle"),
+  handle_type: v.union([v.literal("input"), v.literal("output")]),
   count: v.number(), // Number of connection points
   labels: v.optional(v.array(v.string())),
-  position: v.optional(v.string()),
 });
 
 export type MultiHandle = v.InferOutput<typeof MultiHandleSchema>;
@@ -152,32 +153,28 @@ import { Handle, Position } from "@xyflow/react";
 
 interface MultiHandleProps {
   id: string;
-  handleType: "source" | "target";
+  handle_type: "input" | "output";
   count: number;
   labels?: string[];
-  position?: string;
 }
 
 export function MultiHandle({ 
   id, 
-  handleType, 
+  handle_type, 
   count, 
-  labels = [],
-  position = "right" 
+  labels = []
 }: MultiHandleProps) {
-  const pos = position === "left" ? Position.Left :
-              position === "right" ? Position.Right :
-              position === "top" ? Position.Top :
-              Position.Bottom;
+  const type = handle_type === "input" ? "target" : "source";
+  const position = handle_type === "input" ? Position.Left : Position.Right;
   
   return (
     <div className="flex flex-col gap-2">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex items-center gap-2">
-          {handleType === "target" && (
+          {handle_type === "input" && (
             <Handle
               type="target"
-              position={pos}
+              position={position}
               id={`${id}-${i}`}
               className="!w-3 !h-3 !bg-blue-500"
             />
@@ -185,10 +182,10 @@ export function MultiHandle({
           {labels[i] && (
             <span className="text-xs">{labels[i]}</span>
           )}
-          {handleType === "source" && (
+          {handle_type === "output" && (
             <Handle
               type="source"
-              position={pos}
+              position={position}
               id={`${id}-${i}`}
               className="!w-3 !h-3 !bg-green-500"
             />

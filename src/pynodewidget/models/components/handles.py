@@ -1,7 +1,7 @@
 """Handle components for node connections."""
 
 from typing import Literal, Optional
-from pydantic import Field
+from pydantic import Field, model_validator
 from .base import Component
 
 
@@ -16,9 +16,16 @@ class BaseHandle(Component):
     """
     type: Literal["base-handle"] = "base-handle"
     handle_type: Literal["input", "output"] = Field(..., description="Connection direction")
-    label: str = Field(..., description="Display label")
+    label: Optional[str] = Field(None, description="Display label (auto-inferred from id if not provided)")
     dataType: Optional[str] = Field(None, description="For connection validation")
     required: bool = Field(default=False, description="Whether handle is required")
+    
+    @model_validator(mode='after')
+    def _infer_label(self):
+        """Use id as label if not explicitly provided."""
+        if self.label is None:
+            self.label = self.id
+        return self
 
 
 class LabeledHandle(Component):
@@ -32,9 +39,16 @@ class LabeledHandle(Component):
     """
     type: Literal["labeled-handle"] = "labeled-handle"
     handle_type: Literal["input", "output"] = Field(..., description="Connection direction")
-    label: str = Field(..., description="Display label")
+    label: Optional[str] = Field(None, description="Display label (auto-inferred from id if not provided)")
     dataType: Optional[str] = Field(None, description="For connection validation")
     required: bool = Field(default=False, description="Whether handle is required")
+    
+    @model_validator(mode='after')
+    def _infer_label(self):
+        """Use id as label if not explicitly provided."""
+        if self.label is None:
+            self.label = self.id
+        return self
 
 
 class ButtonHandle(Component):
@@ -48,9 +62,16 @@ class ButtonHandle(Component):
     """
     type: Literal["button-handle"] = "button-handle"
     handle_type: Literal["input", "output"] = Field(..., description="Connection direction")
-    label: str = Field(..., description="Display label")
+    label: Optional[str] = Field(None, description="Display label (auto-inferred from id if not provided)")
     dataType: Optional[str] = Field(None, description="For connection validation")
     required: bool = Field(default=False, description="Whether handle is required")
+    
+    @model_validator(mode='after')
+    def _infer_label(self):
+        """Use id as label if not explicitly provided."""
+        if self.label is None:
+            self.label = self.id
+        return self
 
 
 # Type alias for all handle types

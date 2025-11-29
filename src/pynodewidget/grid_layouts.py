@@ -252,7 +252,8 @@ def json_schema_to_components(
     
     for field_id, prop in json_schema["properties"].items():
         field_type = prop.get("type", "string")
-        label = prop.get("title", field_id)
+        # Use title from schema if provided, otherwise let the field infer from id
+        label = prop.get("title") if "title" in prop else None
         value = values.get(field_id)
         
         if field_type == "string":

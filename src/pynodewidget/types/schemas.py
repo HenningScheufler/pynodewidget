@@ -77,6 +77,16 @@ class SelectFieldDict(TypedDict, total=False):
     options: Optional[List[str]]
 
 
+class ProgressFieldDict(TypedDict, total=False):
+    """Progress field component."""
+    id: str
+    type: Literal["progress"]
+    label: str
+    value: Optional[float]
+    min: Optional[float]
+    max: Optional[float]
+
+
 # Union of all component types
 ComponentDict = Union[
     BaseHandleDict,
@@ -86,6 +96,7 @@ ComponentDict = Union[
     NumberFieldDict,
     BoolFieldDict,
     SelectFieldDict,
+    ProgressFieldDict,
 ]
 
 
