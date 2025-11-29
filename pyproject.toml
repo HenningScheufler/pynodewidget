@@ -46,6 +46,7 @@ notebooks = [
 ]
 all = [
     "pynodewidget[dev,docs,notebooks]",
+    "pyyaml>=6.0.0",
 ]
 
 [build-system]

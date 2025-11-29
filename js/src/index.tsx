@@ -16,6 +16,7 @@ import { FlowCanvas } from "./components/FlowCanvas";
 import { useAutoLayout } from "./hooks/useAutoLayout";
 import { useExport } from "./hooks/useExport";
 import { useContextMenu } from "./hooks/useContextMenu";
+import { useImageExport, type ImageExportTrigger } from "./hooks/useImageExport";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar";
 
 // Context to provide setNodesDict from useModelState to nodes
@@ -111,6 +112,15 @@ function NodeFlowComponent() {
   
   // Watch node values separately - this is a dict keyed by node ID
   const [nodeValues, setNodeValues] = useModelState<NodeValues>("node_values");
+  
+  // Watch for image export trigger from Python
+  const [exportImageTrigger] = useModelState("_export_image_trigger");
+  
+  // Model state setter for sending image data back to Python
+  const [, setExportImageData] = useModelState("_export_image_data");
+  
+  // Create ref for the container to enable image export
+  const containerRef = React.useRef<HTMLDivElement>(null);
   
   // Convert nodesDict to array for React Flow
   const nodes = React.useMemo(() => {
@@ -224,6 +234,13 @@ function NodeFlowComponent() {
   // Use custom hooks for separated concerns
   const { exportToJSON } = useExport(nodes, edges);
   
+  // Handle image export requests from Python
+  const handleDataExported = React.useCallback((dataUrl: string) => {
+    setExportImageData(dataUrl);
+  }, [setExportImageData]);
+  
+  useImageExport(exportImageTrigger as ImageExportTrigger[] | ImageExportTrigger | undefined, containerRef, handleDataExported);
+  
   // Note: useAutoLayout expects setNodes callback, need to adapt
   const setNodesArray = React.useCallback((updater: (nodes: Node[]) => Node[]) => {
     setNodesDict(prev => {
@@ -246,7 +263,7 @@ function NodeFlowComponent() {
   } = useContextMenu(setNodesArray, setEdges);
 
   return (
-    <div style={{ width: "100%", height: height, display: "flex", position: "relative", overflow: "hidden" }}>
+    <div ref={containerRef} style={{ width: "100%", height: height, display: "flex", position: "relative", overflow: "hidden" }}>
       <SetNodesDictContext.Provider value={setNodesDict}>
         <SetNodeValuesContext.Provider value={setNodeValues}>
           <ReactFlowProvider>

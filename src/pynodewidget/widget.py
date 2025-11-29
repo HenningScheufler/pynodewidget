@@ -8,6 +8,16 @@ import json
 from .observable_dict import ObservableDict, ObservableDictTrait
 
 
+def _to_plain_dict(obj):
+    """Recursively convert ObservableDict to plain dict for serialization."""
+    if isinstance(obj, (ObservableDict, dict)):
+        return {k: _to_plain_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_to_plain_dict(item) for item in obj]
+    else:
+        return obj
+
+
 def _validate_unique_component_ids(grid_layout: Dict[str, Any]) -> None:
     """Validate that all component IDs in a grid layout are unique.
     
@@ -95,6 +105,11 @@ class NodeFlowWidget(anywidget.AnyWidget):
     fit_view = t.Bool(default_value=True).tag(sync=True)
     height = t.Unicode(default_value="600px").tag(sync=True)
     
+    # Image export trigger (Python -> JS communication) - List to support rapid successive exports
+    _export_image_trigger = t.List(trait=t.Dict()).tag(sync=True)
+    # Image export data (JS -> Python communication, base64 encoded)
+    _export_image_data = t.Unicode(default_value="").tag(sync=True)
+    
     @property
     def values(self) -> ObservableDict:
         """Direct dict-like access to node values (v2.0 simplified API).
@@ -138,6 +153,11 @@ class NodeFlowWidget(anywidget.AnyWidget):
         """
         super().__init__(**kwargs)
         self.height = height
+        self._export_id = 0
+        self._pending_exports = {}  # Maps export_id -> filename
+        
+        # Set up persistent observer for image data
+        self.observe(self._on_image_data_received, names=['_export_image_data'])
     
     def add_node_type(
         self,
@@ -322,7 +342,8 @@ class NodeFlowWidget(anywidget.AnyWidget):
             "nodes": self.nodes,
             "edges": self.edges,
             "viewport": self.viewport,
-            "node_templates": self.node_templates
+            "node_templates": self.node_templates,
+            "node_values": dict(self.node_values)
         }
         
         with open(filename, 'w') as f:
@@ -331,23 +352,192 @@ class NodeFlowWidget(anywidget.AnyWidget):
         print(f"✓ Flow exported to {filename}")
         return filename
     
-    def load_json(self, filename: str) -> None:
-        """Load a flow from a JSON file.
+    def export_yaml(self, filename: str = "flow.yaml") -> str:
+        """Export the current flow to a YAML file.
         
         Args:
-            filename: Input filename
+            filename: Output filename
+            
+        Raises:
+            ImportError: If pyyaml is not installed
+        """
+        try:
+            import yaml
+        except ImportError:
+            raise ImportError(
+                "PyYAML is required for YAML export. Install with: pip install pyyaml"
+            )
+        
+        data = {
+            "nodes": self.nodes,
+            "edges": self.edges,
+            "viewport": self.viewport,
+            "node_templates": self.node_templates,
+            "node_values": _to_plain_dict(self.node_values)
+        }
+        
+        with open(filename, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+        
+        print(f"✓ Flow exported to {filename}")
+        return filename
+    
+    def export(self, filename: str, format: str = None) -> str:
+        """Export the current flow to a file (auto-detects format from extension).
+        
+        Args:
+            filename: Output filename
+            format: Export format ('json' or 'yaml'). If None, auto-detects from filename
+            
+        Returns:
+            Path to the exported file
+        """
+        if format is None:
+            # Auto-detect format from file extension
+            format = filename.split('.')[-1].lower()
+        
+        if format in ('yaml', 'yml'):
+            return self.export_yaml(filename)
+        elif format == 'json':
+            return self.export_json(filename)
+        elif format in ('png', 'jpeg'):
+            return self.export_image(filename)
+        else:
+            # Default to JSON
+            return self.export_json(filename)
+    
+    @classmethod
+    def from_json(cls, filename: str, **kwargs) -> "NodeFlowWidget":
+        """Create a new widget instance from a JSON file.
+        
+        This is a class method that creates and returns a new NodeFlowWidget
+        with the state loaded from the JSON file.
+        
+        Args:
+            filename: Path to the JSON file to load
+            **kwargs: Additional arguments passed to NodeFlowWidget constructor
+            
+        Returns:
+            New NodeFlowWidget instance with loaded state
+            
+        Examples:
+            >>> # Create widget from saved workflow
+            >>> widget = NodeFlowWidget.from_json("workflow.json")
+            >>> 
+            >>> # Create with custom height
+            >>> widget = NodeFlowWidget.from_json("workflow.json", height="800px")
         """
         with open(filename, 'r') as f:
             data = json.load(f)
         
-        self.nodes = data.get("nodes", {})  # Dict instead of list
-        self.edges = data.get("edges", [])
-        self.viewport = data.get("viewport", {"x": 0, "y": 0, "zoom": 1})
+        widget = cls(**kwargs)
+        widget.nodes = data.get("nodes", {})
+        widget.edges = data.get("edges", [])
+        widget.viewport = data.get("viewport", {"x": 0, "y": 0, "zoom": 1})
         if "node_templates" in data:
-            self.node_templates = data["node_templates"]
+            widget.node_templates = data["node_templates"]
+        if "node_values" in data:
+            widget.node_values = data["node_values"]
         
-        print(f"✓ Flow loaded from {filename}")
-        return self
+        return widget
+    
+    def _on_image_data_received(self, change):
+        """Handle image data received from JavaScript."""
+        data_url = change['new']
+        
+        # Skip empty data
+        if not data_url:
+            return
+        
+        # Extract export ID from the data URL (appended by JS)
+        # Format: data:image/png;base64,...|exportId=123
+        export_id = None
+        if '|exportId=' in data_url:
+            data_url, export_id_str = data_url.rsplit('|exportId=', 1)
+            try:
+                export_id = int(export_id_str)
+            except ValueError:
+                pass
+        
+        # Skip if no export ID or filename is not tracked
+        if export_id is None or export_id not in self._pending_exports:
+            return
+        
+        filename = self._pending_exports.pop(export_id)
+        
+        # Decode and save
+        if data_url.startswith('data:'):
+            import base64
+            from pathlib import Path
+            
+            try:
+                _, encoded = data_url.split(',', 1)
+                image_data = base64.b64decode(encoded)
+                Path(filename).write_bytes(image_data)
+                print(f"✓ Image saved to {filename}")
+            except Exception as e:
+                print(f"✗ Failed to save image: {e}")
+    
+    def export_image(
+        self,
+        filename: str,
+        quality: float = 1.0,
+        pixel_ratio: int = 2,
+        save_to_file: bool = True,
+        browser_download: bool = False
+    ) -> None:
+        """Export the flow visualization as an image.
+        
+        Triggers a browser-based image export using html-to-image. By default,
+        saves the image data to Python and writes it to the specified file path.
+        Optionally can also trigger a browser download.
+        
+        Note:
+            This method only works in browser environments (Jupyter, Marimo).
+            It cannot be used in pure Python scripts without a browser.
+        
+        Args:
+            filename: File path to save the image (when save_to_file=True) or
+                     suggested download name (when browser_download=True)
+            quality: Image quality for JPEG (0.0-1.0)
+            pixel_ratio: Pixel ratio for higher DPI (default: 2)
+            save_to_file: If True, save image data to filesystem via Python (default: True)
+            browser_download: If True, also trigger browser download (default: False)
+            
+        Examples:
+            >>> # Save to filesystem via Python
+            >>> widget.export_image("workflow.png")
+            >>> 
+            >>> # Browser download only
+            >>> widget.export_image("workflow.png", save_to_file=False, browser_download=True)
+            >>> 
+            >>> # Both: save to file AND trigger browser download
+            >>> widget.export_image("workflow.png", browser_download=True)
+        """
+        # Validate format
+        format = filename.split('.')[-1].lower()
+        if format not in ("png", "jpeg"):
+            raise ValueError("Invalid format. Supported formats: png, jpeg")
+        
+        # Increment export ID
+        self._export_id += 1
+        export_id = self._export_id
+        
+        # Store filename for callback if saving to file
+        if save_to_file:
+            self._pending_exports[export_id] = filename
+        
+        # Append to trigger list - this ensures each export is processed separately
+        # even when called multiple times rapidly without sleep
+        self._export_image_trigger = self._export_image_trigger + [{
+            "format": format,
+            "filename": filename,
+            "quality": quality,
+            "pixelRatio": pixel_ratio,
+            "saveToFile": save_to_file,
+            "browserDownload": browser_download,
+            "exportId": export_id
+        }]
     
     def clear(self) -> None:
         """Clear all nodes and edges."""

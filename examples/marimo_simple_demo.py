@@ -8,38 +8,13 @@ with app.setup:
     from pynodewidget import NodeFlowWidget
     from pynodewidget.grid_layouts import create_three_column_grid
     from pynodewidget.models import ButtonHandle, NumberField, LabeledHandle, TextField, ProgressField, ButtonComponent
+    import json
+    import time
 
 
 @app.cell
 def _():
-
-    # Create widget with v2.0 Simplified API
-    # NOTE: If you updated the code, restart the kernel to get the latest version
-    widget = NodeFlowWidget()
-
-    # Create grid layout using helper function
-    grid_layout = create_three_column_grid(
-        left_components=[
-            LabeledHandle(id="input", handle_type="input")
-        ],
-        center_components=[
-            NumberField(id="value", value=50, min=0, max=100),
-            TextField(id="name", value="Processor"),
-            ProgressField(id="progress",min=0,max=100,value=5),
-            ButtonComponent(id="button",action="asda")
-        ],
-        right_components=[
-            LabeledHandle(id="output", handle_type="output")
-        ]
-    )
-
-    widget.add_node_type(
-        type_name="processor",
-        label="Processor",
-        icon="⚙️",
-        grid_layout=grid_layout
-    )
-    widget = mo.ui.anywidget(widget)
+    widget = NodeFlowWidget.from_json("workflow.json")
     widget
     return (widget,)
 
@@ -72,7 +47,35 @@ def _(slider, widget):
 
 
 @app.cell
+def _(widget):
+    time.sleep(1)
+    widget.export_image(filename="workflow.png")
+    return
+
+
+@app.cell
+def _(widget):
+    time.sleep(1)
+    widget.export_image(filename="workflow.jpeg")
+    return
+
+
+@app.cell
 def _():
+    import os
+    return (os,)
+
+
+@app.cell
+def _(os):
+    os.listdir()
+    return
+
+
+@app.cell
+def _(widget):
+    widget.export("workflow.json")      # JSON
+    widget.export("workflow.yaml")      # YAML
     return
 
 
