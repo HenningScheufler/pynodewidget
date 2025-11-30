@@ -449,6 +449,5 @@ flow
 ## See Also
 
 - **[NodeFlowWidget](widget.md)**: Main widget for workflows
-- **[Node Builder](node-builder.md)**: Configuration utilities
 - **[Protocols](protocols.md)**: NodeFactory protocol
 - **[Custom Nodes Guide](../../guides/custom-nodes.md)**: Practical examples

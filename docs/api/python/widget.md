@@ -410,6 +410,5 @@ flow.set_node_values("processor", {"threshold": 0.7})
 ## See Also
 
 - **[JsonSchemaNodeWidget](json-schema-node.md)**: Create custom nodes
-- **[Node Builder](node-builder.md)**: Configuration helpers
 - **[ObservableDict](observable-dict.md)**: Auto-syncing dictionary
 - **[Protocols](protocols.md)**: Extension protocols

@@ -389,10 +389,6 @@ class DataSplitter(JsonSchemaNodeWidget):
         }
 ```
 
-## Node Builder Helpers (Optional)
-
-Use factory functions with handle configuration. See **[Node Builder API](../api/python/node-builder.md)** for details.
-
 ## Handle Labels
 
 ### Using Emojis
@@ -498,4 +494,3 @@ def execute(self, inputs):
 - **[Creating Custom Nodes](custom-nodes.md)**: Build nodes with custom handles
 - **[Working with Values](values.md)**: Handle data flow between nodes
 - **[Protocols API](../api/python/protocols.md)**: HandleSpec documentation
-- **[Node Builder API](../api/python/node-builder.md)**: Factory functions
