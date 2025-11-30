@@ -109,7 +109,6 @@ nav:
     - Overview: api/python/index.md
     - NodeFlowWidget: api/python/widget.md
     - NodeBuilder: api/python/json-schema-node.md
-    - Node Builder Utilities: api/python/node-builder.md
     - ObservableDict: api/python/observable-dict.md
     - Protocols: api/python/protocols.md
   
@@ -126,6 +125,7 @@ nav:
   
   - Examples:
     - Overview: examples/index.md
+    - Workflow Viewer Demo: examples/workflow-viewer-demo.md
 
   - Roadmap: ROADMAP.md
   

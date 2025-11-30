@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "build": "vite build --config vite.config.index.ts && vite build --config vite.config.json_schema.ts",
+    "build:standalone": "vite build --config vite.config.standalone.ts",
+    "build:all": "bun run build && bun run build:standalone",
     "dev": "vite --open /dev/app.html",
     "preview": "vite preview",
     "test": "vitest run",
@@ -28,6 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
+    "html-to-image": "1.11.11",
     "lucide-react": "^0.554.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
