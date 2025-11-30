@@ -6,37 +6,50 @@ A Python wrapper for ReactFlow using AnyWidget - build interactive node graphs w
 
 ```python
 from pynodewidget import NodeFlowWidget
+from pynodewidget.grid_layouts import create_three_column_grid
+from pynodewidget.models import ButtonHandle, NumberField, LabeledHandle, TextField
 
-# Create a simple flow
 widget = NodeFlowWidget()
-widget.nodes = [
-    {"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "Node 1"}},
-    {"id": "2", "position": {"x": 0, "y": 100}, "data": {"label": "Node 2"}},
-]
-widget.edges = [
-    {"id": "e1-2", "source": "1", "target": "2"},
-]
 
-# Display in Jupyter
+grid_layout = create_three_column_grid(
+    left_components=[
+        LabeledHandle(id="input", handle_type="input")
+    ],
+    center_components=[
+        NumberField(id="value", value=50, min=0, max=100),
+        TextField(id="name", value="Processor")
+    ],
+    right_components=[
+        LabeledHandle(id="output", handle_type="output")
+    ]
+)
+
+widget.add_node_type(
+    type_name="processor",
+    label="Processor",
+    icon="⚙️",
+    grid_layout=grid_layout
+)
 widget
 ```
+
+## Demo
+
+![Demo](imgs/widget_example.gif)
+
 
 ## Development
 
 Requires:
-- Python 3.12+
+- Python 3.12+ (uv)
 - [Bun](https://bun.sh) for JavaScript bundling
 
 ```bash
 # Install dependencies
-uv sync
-uv pip install -e ".[dev,docs]"
+uv venv
+uv pip install -e .[all]
 
-# Build JavaScript assets
-cd js && bun install && bun run build
-
-# Build Python package (automatically builds JS)
-uv build
+task
 ```
 
 ### Documentation
@@ -47,16 +60,8 @@ task docs-serve
 
 # Build static documentation
 task docs-build
-
-# Deploy to GitHub Pages
-task docs-deploy
 ```
 
-See full documentation at the project's GitHub Pages or run locally.
+See full [documentation](https://henningscheufler.github.io/pynodewidget/) at the project's GitHub Pages or run locally.
 
-## Project Structure
 
-- `src/pynodewidget/` - Python package
-- `js/` - ReactFlow TypeScript/React code
-- `js/dist/` - Built JavaScript bundle
-- `src/pynodewidget/static/` - Bundled assets included in package
