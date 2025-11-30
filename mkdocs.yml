@@ -125,6 +125,7 @@ nav:
   
   - Examples:
     - Overview: examples/index.md
+    - Workflow Viewer Demo: examples/workflow-viewer-demo.md
 
   - Roadmap: ROADMAP.md
   

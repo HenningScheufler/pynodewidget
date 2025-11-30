@@ -13,22 +13,22 @@ with app.setup:
 
 
 @app.cell
-def _():
-    widget = NodeFlowWidget.from_json("workflow.json")
-    widget
-    return (widget,)
-
-
-@app.cell
 def _(widget):
     widget.node_values
     return
 
 
 @app.cell
-def _(widget):
-    widget.edges
+def _():
     return
+
+
+@app.cell
+def _():
+    widget = NodeFlowWidget.from_json("workflow.json")
+    widget = mo.ui.anywidget(widget)
+    widget
+    return (widget,)
 
 
 @app.cell
@@ -42,40 +42,25 @@ def _():
 def _(slider, widget):
     for node_id in widget.nodes:
         widget.values[node_id]["value"] = slider.value
-        widget.values[node_id]["progress"] = widget.values[node_id]["button"]*10
     return
+
+
+@app.function
+def some_function(change):
+    print(f"{change.keys()=}")
+    print(f"{change["old"]=}")
+    print(f"some_function")
+    print(f"{change=}")
 
 
 @app.cell
 def _(widget):
-    time.sleep(1)
-    widget.export_image(filename="workflow.png")
-    return
-
-
-@app.cell
-def _(widget):
-    time.sleep(1)
-    widget.export_image(filename="workflow.jpeg")
+    widget.observe(some_function, "node_values")
     return
 
 
 @app.cell
 def _():
-    import os
-    return (os,)
-
-
-@app.cell
-def _(os):
-    os.listdir()
-    return
-
-
-@app.cell
-def _(widget):
-    widget.export("workflow.json")      # JSON
-    widget.export("workflow.yaml")      # YAML
     return
 
 

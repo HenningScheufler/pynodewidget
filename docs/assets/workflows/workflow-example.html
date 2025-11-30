@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyNodeWidget - workflow</title>
+    
+    <!-- PyNodeWidget Styles -->
+    <link rel="stylesheet" href="../js/standalone.css">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #fafafa;
+        }
+        #viewer-container {
+            width: 100%;
+            height: 100vh;
+        }
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="viewer-container">
+        <div class="loading">Loading workflow...</div>
+    </div>
+    
+    <script>
+        // Workflow data embedded inline
+        const WORKFLOW_DATA = {
+  "nodes": {
+    "node-1764446071347": {
+      "id": "node-1764446071347",
+      "type": "processor",
+      "position": {
+        "x": 545,
+        "y": 0
+      },
+      "data": {},
+      "measured": {
+        "width": 365,
+        "height": 240
+      },
+      "selected": false,
+      "dragging": false
+    },
+    "node-1764446071598": {
+      "id": "node-1764446071598",
+      "type": "processor",
+      "position": {
+        "x": 545,
+        "y": 360
+      },
+      "data": {},
+      "measured": {
+        "width": 365,
+        "height": 240
+      },
+      "selected": false,
+      "dragging": false
+    },
+    "node-1764446071733": {
+      "id": "node-1764446071733",
+      "type": "processor",
+      "position": {
+        "x": 1090,
+        "y": 540
+      },
+      "data": {},
+      "measured": {
+        "width": 365,
+        "height": 240
+      },
+      "selected": true,
+      "dragging": false
+    },
+    "node-1764446071879": {
+      "id": "node-1764446071879",
+      "type": "processor",
+      "position": {
+        "x": 545,
+        "y": 720
+      },
+      "data": {},
+      "measured": {
+        "width": 365,
+        "height": 240
+      },
+      "selected": false,
+      "dragging": false
+    },
+    "node-1764446072252": {
+      "id": "node-1764446072252",
+      "type": "processor",
+      "position": {
+        "x": 0,
+        "y": 360
+      },
+      "data": {},
+      "measured": {
+        "width": 365,
+        "height": 240
+      },
+      "selected": false,
+      "dragging": false
+    }
+  },
+  "edges": [
+    {
+      "source": "node-1764446072252",
+      "sourceHandle": "output",
+      "target": "node-1764446071879",
+      "targetHandle": "input",
+      "id": "xy-edge__node-1764446072252output-node-1764446071879input"
+    },
+    {
+      "source": "node-1764446072252",
+      "sourceHandle": "output",
+      "target": "node-1764446071347",
+      "targetHandle": "input",
+      "id": "xy-edge__node-1764446072252output-node-1764446071347input"
+    },
+    {
+      "source": "node-1764446071598",
+      "sourceHandle": "output",
+      "target": "node-1764446071733",
+      "targetHandle": "input",
+      "id": "xy-edge__node-1764446071598output-node-1764446071733input"
+    },
+    {
+      "source": "node-1764446071879",
+      "sourceHandle": "output",
+      "target": "node-1764446071733",
+      "targetHandle": "input",
+      "id": "xy-edge__node-1764446071879output-node-1764446071733input"
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "node_templates": [
+    {
+      "type": "processor",
+      "label": "Processor",
+      "description": "",
+      "icon": "\u2699\ufe0f",
+      "category": "general",
+      "definition": {
+        "grid": {
+          "rows": [
+            "1fr"
+          ],
+          "columns": [
+            "auto",
+            "1fr",
+            "auto"
+          ],
+          "gap": "8px",
+          "cells": [
+            {
+              "id": "left-cell",
+              "coordinates": {
+                "row": 1,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "stretch",
+                "justify": "start",
+                "gap": "8px"
+              },
+              "components": [
+                {
+                  "id": "input",
+                  "type": "labeled-handle",
+                  "handle_type": "input",
+                  "label": "input",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            },
+            {
+              "id": "center-cell",
+              "coordinates": {
+                "row": 1,
+                "col": 2,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "start",
+                "justify": "start",
+                "gap": "12px"
+              },
+              "components": [
+                {
+                  "id": "value",
+                  "type": "number",
+                  "label": "value",
+                  "value": 50.0,
+                  "min": 0.0,
+                  "max": 100.0
+                },
+                {
+                  "id": "name",
+                  "type": "text",
+                  "label": "name",
+                  "value": "Processor",
+                  "placeholder": ""
+                },
+                {
+                  "id": "progress",
+                  "type": "progress",
+                  "label": "progress",
+                  "value": 5.0,
+                  "min": 0.0,
+                  "max": 100.0
+                },
+                {
+                  "id": "button",
+                  "type": "button",
+                  "label": "button",
+                  "action": "asda",
+                  "value": 0,
+                  "variant": "default",
+                  "size": "default",
+                  "disabled": false
+                }
+              ]
+            },
+            {
+              "id": "right-cell",
+              "coordinates": {
+                "row": 1,
+                "col": 3,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "stretch",
+                "justify": "start",
+                "gap": "8px"
+              },
+              "components": [
+                {
+                  "id": "output",
+                  "type": "labeled-handle",
+                  "handle_type": "output",
+                  "label": "output",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            }
+          ]
+        },
+        "style": null
+      },
+      "defaultValues": {
+        "value": 50.0,
+        "name": "Processor",
+        "progress": 5.0,
+        "button": 0
+      }
+    }
+  ],
+  "node_values": {
+    "node-1764446071347": {
+      "value": 0,
+      "name": "Processor",
+      "progress": 0,
+      "button": 0
+    },
+    "node-1764446071598": {
+      "value": 0,
+      "name": "Processor",
+      "progress": 0,
+      "button": 0
+    },
+    "node-1764446071733": {
+      "value": 0,
+      "name": "Processor",
+      "progress": 0,
+      "button": 0
+    },
+    "node-1764446071879": {
+      "value": 0,
+      "name": "Processor",
+      "progress": 0,
+      "button": 0
+    },
+    "node-1764446072252": {
+      "value": 0,
+      "name": "Processor",
+      "progress": 0,
+      "button": 0
+    }
+  }
+};
+    </script>
+    
+    <!-- Standalone PyNodeWidget bundle -->
+    <script src="../js/standalone.iife.js"></script>
+    
+    <script>
+        // Render the workflow
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.PyNodeWidget && window.PyNodeWidget.render) {
+                window.PyNodeWidget.render('viewer-container', WORKFLOW_DATA, {
+                    height: '100vh',
+                    interactive: true
+                });
+            } else {
+                console.error('PyNodeWidget not loaded');
+                document.getElementById('viewer-container').innerHTML = 
+                    '<div class="loading">Error: PyNodeWidget not loaded</div>';
+            }
+        });
+    </script>
+</body>
+</html>

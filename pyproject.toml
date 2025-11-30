@@ -73,6 +73,14 @@ test-py-cov = "pytest --cov=pynodewidget --cov-report=xml:coverage.xml --cov-rep
 test-js-cov = "bun --cwd=js run test:coverage"
 test = "task test-py && task test-js"
 
+playwright-install = "playwright install chromium"
+
+# Build standalone HTML viewer bundle
+build-standalone = "cd js && bun run build:standalone"
+
+# Generate example workflow HTML
+generate-workflow-html = "python scripts/generate_workflow_html.py examples/workflow.json docs/workflows/workflow-example.html"
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
