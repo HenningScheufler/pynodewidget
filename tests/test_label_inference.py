@@ -15,40 +15,40 @@ class TestLabelInference:
     def test_simple_id_inference(self):
         """Test label inference from simple single-word IDs."""
         field = NumberField(id="value", value=42)
-        assert field.label == "Value"
+        assert field.label == "value"
         
         field = TextField(id="name", value="test")
-        assert field.label == "Name"
+        assert field.label == "name"
     
     def test_underscore_id_inference(self):
         """Test label inference from IDs with underscores."""
         field = NumberField(id="max_value", value=100)
-        assert field.label == "Max Value"
+        assert field.label == "max_value"
         
         field = TextField(id="user_name", value="")
-        assert field.label == "User Name"
+        assert field.label == "user_name"
         
         field = BoolField(id="is_enabled", value=True)
-        assert field.label == "Is Enabled"
+        assert field.label == "is_enabled"
     
     def test_hyphen_id_inference(self):
         """Test label inference from IDs with hyphens."""
         field = NumberField(id="max-count", value=50)
-        assert field.label == "Max Count"
+        assert field.label == "max-count"
         
         field = TextField(id="input-port", value="")
-        assert field.label == "Input Port"
+        assert field.label == "input-port"
     
     def test_camelcase_id_inference(self):
         """Test label inference from camelCase IDs."""
         field = NumberField(id="maxValue", value=100)
-        assert field.label == "Max Value"
+        assert field.label == "maxValue"
         
         field = TextField(id="userName", value="")
-        assert field.label == "User Name"
+        assert field.label == "userName"
         
         field = BoolField(id="isEnabled", value=True)
-        assert field.label == "Is Enabled"
+        assert field.label == "isEnabled"
     
     def test_explicit_label_override(self):
         """Test that explicit labels override inference."""
@@ -62,20 +62,19 @@ class TestLabelInference:
         """Test that all field types support label inference."""
         # TextField
         text_field = TextField(id="input_text", value="")
-        assert text_field.label == "Input Text"
+        assert text_field.label == "input_text"
         
         # NumberField
         num_field = NumberField(id="max_count", value=10)
-        assert num_field.label == "Max Count"
+        assert num_field.label == "max_count"
         
         # BoolField
         bool_field = BoolField(id="is_active", value=True)
-        assert bool_field.label == "Is Active"
+        assert bool_field.label == "is_active"
         
         # SelectField
         select_field = SelectField(id="selected_mode", options=["a", "b"])
-        assert select_field.label == "Selected Mode"
-
+        assert select_field.label == "selected_mode"
 
 class TestIDUniquenessValidation:
     """Test that duplicate component IDs are detected and rejected."""
@@ -243,6 +242,6 @@ class TestLabelInferenceIntegration:
         assert len(components) == 3
         
         # Labels should be inferred from IDs
-        assert components[0]["label"] == "Max Value"
-        assert components[1]["label"] == "User Name"
-        assert components[2]["label"] == "Is Enabled"
+        assert components[0]["label"] == "max_value"
+        assert components[1]["label"] == "user_name"
+        assert components[2]["label"] == "is_enabled"
