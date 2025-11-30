@@ -417,9 +417,6 @@ def _validate_inputs(self, inputs: dict) -> bool:
     )
 ```
 
-## Factory Functions (Optional)
-
-For quick prototyping, use factory functions from `node_builder` module. See **[Node Builder API](../api/python/node-builder.md)** for details.
 
 ## Real-World Examples
 
@@ -553,5 +550,4 @@ class ChartNode(JsonSchemaNodeWidget):
 - **[Styling Nodes](styling.md)**: Customize node appearance
 - **[Handles Configuration](handles.md)**: Advanced handle setup
 - **[Working with Values](values.md)**: Value management patterns
-- **[Node Builder API](../api/python/node-builder.md)**: Factory function reference
 - **[Protocols API](../api/python/protocols.md)**: NodeFactory protocol details

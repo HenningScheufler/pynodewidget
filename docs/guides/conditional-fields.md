@@ -580,5 +580,4 @@ flow.add_node_type_from_schema(
 ## Next Steps
 
 - **[Creating Custom Nodes](custom-nodes.md)**: Build custom nodes with conditional fields
-- **[Node Builder API](../api/python/node-builder.md)**: Conditional field helper functions
 - **[Styling Nodes](styling.md)**: Style conditional fields

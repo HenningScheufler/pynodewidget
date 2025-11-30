@@ -45,25 +45,6 @@ class MyNode(JsonSchemaNodeWidget):
 
 ---
 
-### [Node Builder Utilities](node-builder.md)
-Helper functions for creating common node configurations without writing custom JavaScript.
-
-```python
-from pynodeflow.node_builder import create_processing_node, with_style
-
-config = create_processing_node("Processor", icon="⚙️")
-config = with_style(config, min_width="300px", shadow="lg")
-```
-
-**Key Features:**
-
-- Pre-built node templates (source, sink, processing, form, etc.)
-- Style and layout helpers
-- Conditional field utilities
-- Configuration merging
-
----
-
 ### [ObservableDict](observable-dict.md)
 Auto-syncing dictionary that triggers callbacks on mutations. Used internally for efficient Python-JavaScript synchronization.
 
@@ -195,13 +176,15 @@ These automatically generate appropriate UI inputs:
 Show/hide fields based on other field values:
 
 ```python
-from pynodeflow.node_builder import make_fields_conditional
-
-fieldConfigs = make_fields_conditional(
-    trigger_field="mode",
-    trigger_value="advanced",
-    dependent_fields=["threshold", "iterations"]
-)
+fieldConfigs = {
+    "threshold": {
+        "showWhen": {
+            "field": "mode",
+            "operator": "equals",
+            "value": "advanced"
+        }
+    }
+}
 
 node = JsonSchemaNodeWidget.from_pydantic(
     MyParams,
@@ -213,18 +196,20 @@ node = JsonSchemaNodeWidget.from_pydantic(
 ### Custom Styling
 
 ```python
-from pynodeflow.node_builder import with_style, with_custom_header
+config = {
+    "header": {
+        "show": True,
+        "icon": "✨",
+        "className": "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
+    },
+    "style": {
+        "minWidth": "300px",
+        "shadow": "lg",
+        "borderRadius": "12px"
+    }
+}
 
-config = create_processing_node("Styled Node")
-config = with_style(config, 
-    min_width="300px",
-    shadow="lg",
-    border_radius="12px"
-)
-config = with_custom_header(config,
-    icon="✨",
-    class_name="bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-)
+node = JsonSchemaNodeWidget.from_pydantic(MyParams, **config)
 ```
 
 ### Node Execution
@@ -256,5 +241,4 @@ class ProcessorNode(JsonSchemaNodeWidget):
 
 - **[NodeFlowWidget Reference](widget.md)**: Complete widget API
 - **[JsonSchemaNodeWidget Reference](json-schema-node.md)**: Node creation API
-- **[Node Builder Utilities](node-builder.md)**: Configuration helpers
 - **[User Guides](../../guides/custom-nodes.md)**: Practical tutorials

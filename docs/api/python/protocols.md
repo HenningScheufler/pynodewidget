@@ -641,6 +641,5 @@ class ChartNode:
 ## See Also
 
 - **[Creating Custom Nodes](../../guides/custom-nodes.md)**: Guide on building nodes
-- **[Node Builder](node-builder.md)**: Helper functions using protocols
 - **[JsonSchemaNodeWidget](json-schema-node.md)**: Base class implementing protocol
 - **[Handle Configuration](../../guides/handles.md)**: Working with HandleSpec

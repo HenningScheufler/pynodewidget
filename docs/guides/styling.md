@@ -515,4 +515,3 @@ Full reference: [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - **[Creating Custom Nodes](custom-nodes.md)**: Build custom nodes
 - **[Conditional Fields](conditional-fields.md)**: Dynamic field visibility
 - **[Handles Configuration](handles.md)**: Connection point styling
-- **[Node Builder API](../api/python/node-builder.md)**: Styling helper functions
