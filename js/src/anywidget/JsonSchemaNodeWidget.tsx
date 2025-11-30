@@ -7,6 +7,14 @@ import { SetNodeValuesContext } from "../index";
 import "@xyflow/react/dist/style.css";
 import "../style.css";
 
+// DEPRECATION WARNING: This component is maintained for backward compatibility only
+// New code should use the grid-based system directly
+console.warn(
+  "JsonSchemaNodeWidget: This widget is deprecated and maintained for backward compatibility only. " +
+  "Please migrate to using grid-based node definitions with pynodewidget.grid_layouts helpers. " +
+  "See documentation for migration guide."
+);
+
 function JsonSchemaNodeWidget() {
   const [idRaw] = useModelState("id");
   const [dataRaw] = useModelState("data");

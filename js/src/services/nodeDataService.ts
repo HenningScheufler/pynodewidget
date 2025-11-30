@@ -4,7 +4,8 @@
  */
 
 import type { Node } from "@xyflow/react";
-import type { CustomNodeData, JsonSchemaProperty, FieldValue } from "../types/schema";
+import type { NodeData } from "../contexts/NodeDataContext";
+import type { PrimitiveFieldValue, ComponentType } from "../types/schema";
 
 export class NodeDataService {
   /**
@@ -21,11 +22,11 @@ export class NodeDataService {
     nodes: Node[],
     nodeId: string,
     key: string,
-    value: FieldValue
+    value: PrimitiveFieldValue
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         return {
           ...node,
           data: {
@@ -42,39 +43,30 @@ export class NodeDataService {
   }
 
   /**
-   * Get a field value with fallback to default from parameters.
-   * 
-   * @param node - The node to get the value from
-   * @param key - Field key
-   * @param property - Parameter property definition
-   * @returns The field value, or default if not set
-   */
-  static getFieldValue(
-    node: Node,
-    key: string,
-    property: JsonSchemaProperty
-  ): FieldValue {
-    const data = node.data as unknown as CustomNodeData;
-    const value = data.values?.[key];
-    
-    // Return value if it exists, otherwise use default from parameters
-    if (value !== undefined && value !== null) {
-      return value;
-    }
-    
-    return property.default ?? null;
-  }
-
-  /**
-   * Check if a field is required based on the node's parameters.
+   * Check if a field is required based on the node's grid components.
    * 
    * @param node - The node to check
-   * @param fieldKey - Field key to check
-   * @returns True if the field is required
+   * @param fieldKey - Field key to check (component ID)
+   * @returns True if the field/component is marked as required
    */
   static isFieldRequired(node: Node, fieldKey: string): boolean {
-    const data = node.data as unknown as CustomNodeData;
-    return data.parameters?.required?.includes(fieldKey) ?? false;
+    const data = node.data as unknown as NodeData;
+    
+    // Search through grid cells for a component with matching ID
+    if (!data.grid?.cells) {
+      return false;
+    }
+    
+    for (const cell of data.grid.cells) {
+      for (const component of cell.components) {
+        if (component.id === fieldKey) {
+          // Check if component has required property (handles have this)
+          return 'required' in component ? (component as any).required === true : false;
+        }
+      }
+    }
+    
+    return false;
   }
 
   /**
@@ -83,8 +75,8 @@ export class NodeDataService {
    * @param node - The node to get values from
    * @returns Object containing all field values
    */
-  static getAllValues(node: Node): Record<string, FieldValue> {
-    const data = node.data as unknown as CustomNodeData;
+  static getAllValues(node: Node): Record<string, PrimitiveFieldValue> {
+    const data = node.data as unknown as NodeData;
     return data.values || {};
   }
 
@@ -99,11 +91,11 @@ export class NodeDataService {
   static updateMultipleValues(
     nodes: Node[],
     nodeId: string,
-    values: Record<string, FieldValue>
+    values: Record<string, PrimitiveFieldValue>
   ): Node[] {
     return nodes.map((node) => {
       if (node.id === nodeId) {
-        const currentData = node.data as unknown as CustomNodeData;
+        const currentData = node.data as unknown as NodeData;
         return {
           ...node,
           data: {

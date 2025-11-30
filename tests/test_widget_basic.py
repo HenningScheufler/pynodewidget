@@ -7,7 +7,7 @@ from pynodewidget import NodeFlowWidget
 def test_widget_initialization():
     """Test basic widget initialization."""
     widget = NodeFlowWidget()
-    assert widget.nodes == []
+    assert widget.nodes == {}
     assert widget.edges == []
     assert widget.height == "600px"
     assert widget.fit_view is True
@@ -36,12 +36,12 @@ def test_static_files_exist():
 def test_clear():
     """Test clearing all nodes and edges."""
     widget = NodeFlowWidget()
-    widget.nodes = [{"id": "1"}, {"id": "2"}]
+    widget.nodes = {"1": {"id": "1"}, "2": {"id": "2"}}
     widget.edges = [{"id": "e1"}]
     
     result = widget.clear()
     
-    assert widget.nodes == []
+    assert widget.nodes == {}
     assert widget.edges == []
     assert result is widget  # Check method chaining
 
@@ -49,12 +49,12 @@ def test_clear():
 def test_get_flow_data():
     """Test getting flow data."""
     widget = NodeFlowWidget()
-    widget.nodes = [{"id": "1"}]
+    widget.nodes = {"1": {"id": "1"}}
     widget.edges = [{"id": "e1"}]
     
     data = widget.get_flow_data()
     
     assert data == {
-        "nodes": [{"id": "1"}],
+        "nodes": {"1": {"id": "1"}},
         "edges": [{"id": "e1"}]
     }

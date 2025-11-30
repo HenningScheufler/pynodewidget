@@ -389,58 +389,9 @@ class DataSplitter(JsonSchemaNodeWidget):
         }
 ```
 
-## Node Builder Helpers
+## Node Builder Helpers (Optional)
 
-Use factory functions with handle configuration:
-
-### Source Node
-
-```python
-from pynodeflow.node_builder import create_source_node
-
-config = create_source_node(
-    label="Data Source",
-    icon="📁"
-)
-
-# Modify outputs
-config["outputs"] = [
-    {"id": "data", "label": "Data"},
-    {"id": "metadata", "label": "Metadata"}
-]
-```
-
-### Sink Node
-
-```python
-from pynodeflow.node_builder import create_sink_node
-
-config = create_sink_node(
-    label="Data Sink",
-    icon="💾"
-)
-
-# Modify inputs
-config["inputs"] = [
-    {"id": "data", "label": "Data to Save"}
-]
-```
-
-### Processing Node
-
-```python
-from pynodeflow.node_builder import create_processing_node
-
-config = create_processing_node(
-    label="Processor",
-    icon="⚙️",
-    handle_type="button"
-)
-
-# Add handles
-config["inputs"] = [{"id": "in", "label": "Input"}]
-config["outputs"] = [{"id": "out", "label": "Output"}]
-```
+Use factory functions with handle configuration. See **[Node Builder API](../api/python/node-builder.md)** for details.
 
 ## Handle Labels
 
@@ -526,163 +477,21 @@ def execute(self, inputs):
 
 ## Best Practices
 
-### 1. Consistent Naming
-
-Use clear, consistent handle IDs and labels:
-
-```python
-# ❌ Inconsistent
-inputs = [
-    {"id": "d", "label": "Data Input"},
-    {"id": "configuration_parameters", "label": "Config"}
-]
-
-# ✅ Consistent
-inputs = [
-    {"id": "data", "label": "Input Data"},
-    {"id": "config", "label": "Configuration"}
-]
-```
-
-### 2. Meaningful Labels
-
-Labels should describe data content:
-
-```python
-# ❌ Generic
-outputs = [
-    {"id": "out1", "label": "Output 1"},
-    {"id": "out2", "label": "Output 2"}
-]
-
-# ✅ Specific
-outputs = [
-    {"id": "predictions", "label": "Model Predictions"},
-    {"id": "confidence", "label": "Confidence Scores"}
-]
-```
-
-### 3. Appropriate Handle Types
-
-Choose handle type based on node complexity:
-
-```python
-# Simple node → base handles
-class SimpleCalc(JsonSchemaNodeWidget):
-    handle_type = "base"
-
-# Complex data flow → labeled handles
-class DataPipeline(JsonSchemaNodeWidget):
-    handle_type = "labeled"
-
-# Interactive processing → button handles
-class Processor(JsonSchemaNodeWidget):
-    handle_type = "button"
-```
-
-### 4. Limit Handle Count
-
-Avoid too many handles on one node:
-
-```python
-# ❌ Too many handles (hard to use)
-inputs = [f"input_{i}" for i in range(20)]
-
-# ✅ Reasonable number (or use dynamic handles)
-inputs = [
-    {"id": "primary", "label": "Primary Input"},
-    {"id": "secondary", "label": "Secondary Input"},
-    {"id": "optional", "label": "Optional Input"}
-]
-```
-
-### 5. Document Handle Purpose
-
-Add descriptions for complex handles:
-
-```python
-from pynodeflow.protocols import HandleSpec
-
-outputs = [
-    HandleSpec(
-        id="model",
-        label="Trained Model",
-        handle_type="labeled"
-        # Future: description="Serialized model ready for inference"
-    ),
-    HandleSpec(
-        id="metrics",
-        label="Training Metrics",
-        handle_type="labeled"
-        # Future: description="Loss, accuracy, and other training metrics"
-    )
-]
-```
+- **Consistent naming**: Use clear, consistent handle IDs and labels
+- **Meaningful labels**: Describe data content, not just "Input 1"
+- **Appropriate types**: Base for simple, labeled for complex, button for interactive
+- **Limit handle count**: Avoid too many handles (keep under ~10)
+- **Document purpose**: Add descriptions for complex handles
 
 ## Troubleshooting
 
-### Handles Not Appearing
+**Handles not appearing**: Use dict format `[{"id": "data", "label": "Data"}]`, not list of strings.
 
-Check handle definition syntax:
+**Handle IDs conflict**: Ensure all IDs are unique within inputs and outputs.
 
-```python
-# ❌ Invalid format
-inputs = ["data", "config"]
+**Handle type not working**: Valid types are `"base"`, `"button"`, or `"labeled"`.
 
-# ✅ Valid format
-inputs = [
-    {"id": "data", "label": "Data"},
-    {"id": "config", "label": "Config"}
-]
-```
-
-### Handle IDs Conflict
-
-Ensure unique IDs:
-
-```python
-# ❌ Duplicate IDs
-outputs = [
-    {"id": "result", "label": "Result A"},
-    {"id": "result", "label": "Result B"}  # Same ID!
-]
-
-# ✅ Unique IDs
-outputs = [
-    {"id": "result_a", "label": "Result A"},
-    {"id": "result_b", "label": "Result B"}
-]
-```
-
-### Handle Type Not Working
-
-Check spelling and options:
-
-```python
-# ❌ Invalid type
-handle_type = "labeled-button"  # Not valid
-
-# ✅ Valid types
-handle_type = "base"     # ✓
-handle_type = "button"   # ✓
-handle_type = "labeled"  # ✓
-```
-
-### Pydantic Handles Not Converting
-
-Ensure proper Pydantic model:
-
-```python
-# ❌ Not a BaseModel
-class BadOutputs:
-    data: str
-
-# ✅ BaseModel subclass
-from pydantic import BaseModel
-
-class GoodOutputs(BaseModel):
-    data: str = Field(description="Output data")
-```
+**Pydantic handles not converting**: Ensure class inherits from `BaseModel`.
 
 ## Next Steps
 

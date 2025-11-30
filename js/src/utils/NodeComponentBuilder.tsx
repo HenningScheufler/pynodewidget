@@ -5,8 +5,7 @@
  * an optimized React component that can be registered in ReactFlow's nodeTypes.
  * 
  * Key features:
- * - Resolves layout and handle types at build time (not render time)
- * - Pre-computes static parts (header, footer, styles)
+ * - Uses three-layer grid system (NodeGrid → GridCell → ComponentType)
  * - Returns memoized component for optimal performance
  * - Validates schema structure and throws clear errors
  */
@@ -15,13 +14,15 @@ import * as React from "react";
 import type { NodeProps } from "@xyflow/react";
 import type { ComponentType } from "react";
 import type { 
-  CustomNodeData, 
   NodeTemplate,
+  NodeGrid,
+  NodeStyleConfig,
+  PrimitiveFieldValue,
   FieldValue,
 } from "../types/schema";
-import { getLayout } from "../components/layouts/LayoutFactory";
-import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { NodeForm } from "../components/NodeForm";
+import { NodeGridRenderer } from "../components/GridRenderer";
+import { NodeDataContext, type NodeData } from "../contexts/NodeDataContext";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useSetNodeValues } from "../index";
 
@@ -30,88 +31,39 @@ import { useSetNodeValues } from "../index";
  * 
  * @example
  * ```typescript
- * const schema: CustomNodeData = {
- *   label: "Processor",
- *   layoutType: "horizontal",
- *   handleType: "button",
- *   header: { show: true, icon: "⚙️" }
+ * const definition = {
+ *   grid: {
+ *     rows: ["auto", "1fr", "auto"],
+ *     columns: ["1fr"],
+ *     cells: [...]
+ *   },
+ *   style: { minWidth: "200px" }
  * };
  * 
- * const component = NodeComponentBuilder.buildComponent(schema);
- * nodeFactory.register("processor", component);
+ * const component = NodeComponentBuilder.buildComponent(definition, "Processor");
  * ```
  */
 export class NodeComponentBuilder {
-  private schema: CustomNodeData;
-  private LayoutComponent: ReturnType<typeof getLayout>;
+  private grid: NodeGrid;
+  private style?: NodeStyleConfig;
+  private label: string;
 
-  constructor(schema: CustomNodeData) {
-    this.schema = schema;
+  constructor(grid: NodeGrid, style?: NodeStyleConfig, label: string = "Node") {
+    this.grid = grid;
+    this.style = style;
+    this.label = label;
     
-    // Resolve layout at build time
-    this.LayoutComponent = getLayout(schema.layoutType);
-    if (!this.LayoutComponent) {
-      throw new Error(`Unknown layoutType: "${schema.layoutType}".`);
+    // Validate that grid is provided
+    if (!grid) {
+      throw new Error("'grid' property is required in node definition.");
     }
-  }
-
-  /**
-   * Build header configuration and pre-render header element
-   */
-  private buildHeaderConfig() {
-    const { header, label, icon } = this.schema;
-    const showHeader = header?.show !== false;
-    const headerIcon = header?.icon || icon;
-    
-    return {
-      show: showHeader,
-      element: showHeader ? (
-        <CardHeader 
-          className={cn(
-            "p-2.5 space-y-0 px-2.5",
-            header?.className || "bg-primary text-primary-foreground"
-          )}
-          style={{
-            backgroundColor: header?.bgColor,
-            color: header?.textColor,
-          }}
-        >
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            {headerIcon && <span className="text-base">{headerIcon}</span>}
-            {label}
-          </CardTitle>
-        </CardHeader>
-      ) : null
-    };
-  }
-
-  /**
-   * Build footer configuration and pre-render footer element
-   */
-  private buildFooterConfig() {
-    const { footer } = this.schema;
-    const showFooter = footer?.show === true;
-    
-    return {
-      show: showFooter,
-      element: showFooter && footer ? (
-        <CardFooter 
-          className={cn(
-            "p-2 px-2.5 text-xs text-muted-foreground border-t",
-            footer.className
-          )}
-        >
-          {footer.text}
-        </CardFooter>
-      ) : null
-    };
   }
 
   /**
    * Build style configuration and compute CSS properties
    */
   private buildStyleConfig() {
-    const { style } = this.schema;
+    const { style } = this;
     
     const cardStyle: React.CSSProperties = {};
     if (style?.minWidth) {
@@ -143,28 +95,36 @@ export class NodeComponentBuilder {
   }
 
   /**
-   * Build the complete React component with all configuration baked in
+   * Build the complete React component
    * 
    * Returns a memoized component that only re-renders when necessary
    * (when id, selected, or values change).
    */
   buildComponent(): ComponentType<NodeProps> {
-    const { schema, LayoutComponent } = this;
-    const headerConfig = this.buildHeaderConfig();
-    const footerConfig = this.buildFooterConfig();
+    const { grid, label } = this;
     const styleConfig = this.buildStyleConfig();
 
     // Generate component with all config baked into closure
     const GeneratedNode: React.FC<NodeProps> = ({ id, data, selected }) => {
-      const nodeData = data as CustomNodeData;
+      const nodeData = data as unknown as NodeData;
       const setNodeValues = useSetNodeValues();
 
-      const handleInputChange = React.useCallback((key: string, value: FieldValue) => {
+      const handleInputChange = React.useCallback((key: string, value: PrimitiveFieldValue) => {
         setNodeValues(prev => ({
           ...prev,
           [id]: { ...prev[id], [key]: value }
         }));
       }, [id, setNodeValues]);
+
+      // Use grid from runtime data or fallback to template grid
+      const currentGrid = nodeData.grid || grid;
+
+      // Create context value
+      const contextValue = React.useMemo(() => ({
+        nodeId: id,
+        nodeData: nodeData || { label, grid, values: {} },
+        onValueChange: handleInputChange
+      }), [id, nodeData, handleInputChange]);
 
       return (
         <Card 
@@ -174,45 +134,37 @@ export class NodeComponentBuilder {
           )}
           style={styleConfig.style}
         >
-          {headerConfig.element}
-          
-          <LayoutComponent 
-            inputs={nodeData.inputs || schema.inputs} 
-            outputs={nodeData.outputs || schema.outputs}
-            handleType={schema.handleType}
-            inputHandleType={schema.inputHandleType}
-            outputHandleType={schema.outputHandleType}
-          >
-            {nodeData.parameters && (
-              <NodeForm
-                nodeId={id}
-                parameters={nodeData.parameters}
-                values={nodeData.values}
-                onValueChange={handleInputChange}
-                fieldConfigs={nodeData.fieldConfigs}
-                validation={nodeData.validation}
-              />
-            )}
-          </LayoutComponent>
-          
-          {footerConfig.element}
+          <NodeDataContext.Provider value={contextValue}>
+            <NodeGridRenderer 
+              grid={currentGrid}
+              nodeId={id}
+              onValueChange={handleInputChange}
+            />
+          </NodeDataContext.Provider>
         </Card>
       );
     };
 
     // Memoize for performance - only re-render if these props change
-    return React.memo(GeneratedNode, (prev, next) => 
-      prev.id === next.id && 
-      prev.selected === next.selected &&
-      prev.data.values === next.data.values
-    );
+    // Use JSON.stringify for deep comparison of values object
+    return React.memo(GeneratedNode, (prev, next) => {
+      if (prev.id !== next.id || prev.selected !== next.selected) {
+        return false; // Props changed, re-render
+      }
+      // Deep compare values
+      const prevValues = prev.data.values;
+      const nextValues = next.data.values;
+      if (prevValues === nextValues) return true; // Same reference
+      if (!prevValues || !nextValues) return prevValues === nextValues;
+      return JSON.stringify(prevValues) === JSON.stringify(nextValues);
+    });
   }
 
   /**
-   * Static helper to build a component from schema in one call
+   * Static helper to build a component from grid and style in one call
    */
-  static buildComponent(schema: CustomNodeData): ComponentType<NodeProps> {
-    const builder = new NodeComponentBuilder(schema);
+  static buildComponent(grid: NodeGrid, style?: NodeStyleConfig, label: string = "Node"): ComponentType<NodeProps> {
+    const builder = new NodeComponentBuilder(grid, style, label);
     return builder.buildComponent();
   }
 }
@@ -238,9 +190,17 @@ export function buildNodeTypes(templates: NodeTemplate[]): Record<string, Compon
   
   for (const template of templates) {
     try {
-      nodeTypes[template.type] = NodeComponentBuilder.buildComponent(template.defaultData);
+      // Use template.definition (NodeDefinition) which contains grid and style
+      nodeTypes[template.type] = NodeComponentBuilder.buildComponent(
+        template.definition.grid,
+        template.definition.style,
+        template.label
+      );
     } catch (error) {
-      console.error(`Failed to build component for node type "${template.type}":`, error);
+      // Only log in non-test environments to avoid cluttering test output
+      if (process.env.NODE_ENV !== 'test' && typeof process.env.VITEST === 'undefined') {
+        console.error(`Failed to build component for node type "${template.type}":`, error);
+      }
       throw error;
     }
   }

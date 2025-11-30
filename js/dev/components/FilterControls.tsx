@@ -31,9 +31,11 @@ export function FilterControls({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Layouts</SelectItem>
-            <SelectItem value="horizontal">Horizontal Only</SelectItem>
-            <SelectItem value="vertical">Vertical Only</SelectItem>
-            <SelectItem value="compact">Compact Only</SelectItem>
+            <SelectItem value="simple_node">✨ Simple Node</SelectItem>
+            <SelectItem value="horizontal">↔️ Horizontal</SelectItem>
+            <SelectItem value="vertical">↕️ Vertical</SelectItem>
+            <SelectItem value="header_body">🎨 Header & Body</SelectItem>
+            <SelectItem value="complex">🚀 Complex Layout</SelectItem>
           </SelectContent>
         </Select>
       </div>

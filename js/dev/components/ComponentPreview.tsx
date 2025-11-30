@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { layouts, handleTypes, sampleNodeData } from '../constants';
+import { nodeExamples, nodeTemplatesByHandleType, sampleNodeData } from '../constants';
 import { InfoBanner } from './InfoBanner';
 import { FilterControls } from './FilterControls';
 import { NodePreviewCard } from './NodePreviewCard';
@@ -9,8 +9,13 @@ export function ComponentPreview() {
   const [handleFilter, setHandleFilter] = useState('all');
   const [showSelected, setShowSelected] = useState(false);
 
+  // Use node examples for preview
+  const layouts = nodeExamples;
+  const handleTypes = Object.values(nodeTemplatesByHandleType);
+  
   const filteredLayouts = layoutFilter === 'all' ? layouts : layouts.filter(l => l.type === layoutFilter);
-  const filteredHandles = handleFilter === 'all' ? handleTypes : handleTypes.filter(h => h.type === handleFilter);
+  // Filter by the handle type in the template type name
+  const filteredHandles = handleFilter === 'all' ? handleTypes : handleTypes.filter(h => h.type.includes(handleFilter));
   
   const combinations = filteredLayouts.flatMap(layout => 
     filteredHandles.map(handle => ({

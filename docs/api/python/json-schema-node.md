@@ -1,8 +1,8 @@
-# JsonSchemaNodeWidget
+# NodeBuilder
 
 Base class for creating custom node types using Pydantic models.
 
-::: pynodewidget.json_schema_node.JsonSchemaNodeWidget
+::: pynodewidget.json_schema_node.NodeBuilder
     options:
       show_source: true
       members:

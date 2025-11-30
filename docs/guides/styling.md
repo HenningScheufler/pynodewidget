@@ -480,227 +480,35 @@ class ChartNode(JsonSchemaNodeWidget):
 
 ## Tailwind CSS Reference
 
-PyNodeWidget uses Tailwind CSS for styling. Common utilities:
+PyNodeWidget uses Tailwind CSS. Common utilities:
 
-### Colors
+- **Colors**: `bg-{color}-{shade}`, `text-{color}-{shade}` (shades 50-950)
+- **Spacing**: `p-{size}`, `m-{size}`, `space-y-{size}` (sizes 0-64)
+- **Layout**: `flex`, `grid`, `items-center`, `justify-between`
+- **Borders**: `border`, `border-{size}`, `rounded`, `rounded-{size}`
+- **Shadows**: `shadow-{sm|md|lg|xl}`
+- **Text**: `text-{xs|sm|base|lg}`, `font-{bold|semibold}`
+- **Gradients**: `bg-gradient-to-{r|b}`, `from-{color}`, `to-{color}`
 
-```
-bg-{color}-{shade}    # Background: bg-blue-500
-text-{color}-{shade}  # Text: text-white
-border-{color}-{shade} # Border: border-gray-300
-```
-
-**Shades**: 50 (lightest) to 950 (darkest)
-
-### Spacing
-
-```
-p-{size}   # Padding: p-2, p-4
-m-{size}   # Margin: m-2, m-4
-space-y-{size}  # Vertical spacing between children
-space-x-{size}  # Horizontal spacing
-```
-
-**Sizes**: 0, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64
-
-### Layout
-
-```
-flex          # Flexbox container
-items-center  # Vertical alignment
-justify-between  # Horizontal distribution
-grid          # Grid container
-```
-
-### Borders
-
-```
-border         # 1px border
-border-2       # 2px border
-border-t       # Top border only
-border-l-4     # Left border, 4px
-rounded        # Rounded corners
-rounded-t      # Rounded top corners
-rounded-lg     # Large rounded corners
-```
-
-### Shadows
-
-```
-shadow-sm      # Small shadow
-shadow         # Medium shadow
-shadow-lg      # Large shadow
-shadow-xl      # Extra large shadow
-```
-
-### Text
-
-```
-text-xs        # Extra small
-text-sm        # Small
-text-base      # Normal
-text-lg        # Large
-font-bold      # Bold weight
-font-semibold  # Semi-bold
-```
-
-### Gradients
-
-```
-bg-gradient-to-r    # Left to right
-bg-gradient-to-b    # Top to bottom
-from-{color}-{shade}  # Start color
-to-{color}-{shade}    # End color
-```
-
-Example: `bg-gradient-to-r from-blue-500 to-purple-600`
+Full reference: [Tailwind CSS Docs](https://tailwindcss.com/docs)
 
 ## Best Practices
 
-### 1. Consistent Color Schemes
-
-Group related nodes with similar colors:
-
-```python
-# Input nodes: Blue
-class DataInput(JsonSchemaNodeWidget):
-    color = "blue"
-
-# Processing nodes: Green
-class Processor(JsonSchemaNodeWidget):
-    color = "green"
-
-# Output nodes: Purple
-class DataOutput(JsonSchemaNodeWidget):
-    color = "purple"
-```
-
-### 2. Use Icons Meaningfully
-
-Icons should clarify node purpose:
-
-```python
-# ❌ Confusing
-class DataLoader(JsonSchemaNodeWidget):
-    icon = "🎉"  # Party emoji for data loading?
-
-# ✅ Clear
-class DataLoader(JsonSchemaNodeWidget):
-    icon = "📁"  # File/folder for data loading
-```
-
-### 3. Keep Headers Concise
-
-Avoid cluttering headers:
-
-```python
-# ❌ Too much info
-@classmethod
-def render_custom_header(cls, field_values):
-    return f'''
-    <div>
-        <div>Label: {cls.label}</div>
-        <div>Type: {cls.type}</div>
-        <div>Category: {cls.category}</div>
-        <div>Description: {cls.description}</div>
-    </div>
-    '''
-
-# ✅ Essential info only
-@classmethod
-def render_custom_header(cls, field_values):
-    status = field_values.get("status", "idle")
-    return f'<div class="font-bold">{cls.label} - {status}</div>'
-```
-
-### 4. Responsive Widths
-
-Use min/max width for flexibility:
-
-```python
-# ❌ Fixed width
-body_class = "w-64"  # Always 256px
-
-# ✅ Flexible with bounds
-# Use node builder: with_style(..., min_width="200px", max_width="400px")
-```
-
-### 5. Accessible Colors
-
-Ensure sufficient contrast:
-
-```python
-# ❌ Poor contrast
-header_class = "bg-yellow-200 text-yellow-300"
-
-# ✅ Good contrast
-header_class = "bg-yellow-500 text-black"
-header_class = "bg-blue-600 text-white"
-```
-
-### 6. Test Error States
-
-Verify error styling is visible:
-
-```python
-class TestNode(JsonSchemaNodeWidget):
-    label = "Test"
-    parameters = TestParams
-    shadow_on_error = "lg"  # Visible feedback
-    errors_at = "bottom"     # Centralized errors
-```
+- **Consistent colors**: Group related nodes with similar colors
+- **Meaningful icons**: Icons should clarify node purpose  
+- **Concise headers**: Avoid cluttering with too much info
+- **Accessible colors**: Ensure sufficient contrast
+- **Test error states**: Verify error styling is visible
 
 ## Troubleshooting
 
-### Styles Not Applying
+**Styles not applying**: Check Tailwind class spelling.
 
-Check Tailwind class spelling:
+**Header/footer not showing**: Enable with `use_custom_header = True` or `use_custom_footer = True`.
 
-```python
-# ❌ Invalid class
-header_class = "bg-blue-500 txt-white"  # Should be "text-white"
+**Colors not changing**: Custom header classes override node-level `color` attribute.
 
-# ✅ Valid classes
-header_class = "bg-blue-500 text-white"
-```
-
-### Header/Footer Not Showing
-
-Ensure flags are enabled:
-
-```python
-# ❌ Header defined but not enabled
-header_class = "bg-blue-500"
-
-# ✅ Enable custom header
-use_custom_header = True
-header_class = "bg-blue-500 text-white"
-```
-
-### Colors Not Changing
-
-Check color attribute vs. header styling:
-
-```python
-# Node-level color (affects default header)
-color = "blue"
-
-# Custom header overrides node color
-use_custom_header = True
-header_class = "bg-purple-600"  # This takes precedence
-```
-
-### Gradients Not Working
-
-Ensure proper Tailwind gradient syntax:
-
-```python
-# ❌ Invalid gradient
-header_class = "bg-gradient blue-to-purple"
-
-# ✅ Valid gradient
-header_class = "bg-gradient-to-r from-blue-500 to-purple-600"
-```
+**Gradients not working**: Use format `bg-gradient-to-r from-{color}-{shade} to-{color}-{shade}`.
 
 ## Next Steps
 

@@ -1,23 +1,65 @@
 /**
- * Type definitions for JSON Schema and node data structures
+ * Type definitions for node data structures
+ * 
+ * Component types (BaseHandle, TextField, etc.) have been migrated to Valibot schemas
+ * and are now defined in their respective component files.
+ * Import them from: @/components/ComponentFactory or individual component files
  */
 
-export type JsonSchemaType = "string" | "number" | "integer" | "boolean" | "object" | "array";
+// Import component types - these are now defined with Valibot
+import type { 
+  ComponentType, 
+  Handle,
+  GridCell,
+  NodeGrid,
+} from "@/components/ComponentFactory";
 
-export interface JsonSchemaProperty {
-  type: JsonSchemaType;
-  title?: string;
-  default?: string | number | boolean | null;
-  enum?: Array<string | number>;
-  description?: string;
-}
+import type {
+  GridCoordinates,
+  CellLayout,
+  GridLayoutComponent,
+} from "@/components/layouts/GridLayoutComponent";
 
-export interface JsonSchema {
-  type: "object";
-  title?: string;
-  properties: Record<string, JsonSchemaProperty>;
-  required?: string[];
-}
+// Import individual component types for convenience
+import type { BaseHandle } from "@/components/handles/BaseHandle";
+import type { LabeledHandle } from "@/components/handles/LabeledHandle";
+import type { ButtonHandle } from "@/components/handles/ButtonHandle";
+import type { TextField } from "@/components/fields/StringField";
+import type { NumberField } from "@/components/fields/NumberField";
+import type { BoolField } from "@/components/fields/BooleanField";
+import type { SelectField } from "@/components/fields/SelectField";
+import type { HeaderComponent } from "@/components/HeaderComponent";
+import type { FooterComponent } from "@/components/FooterComponent";
+import type { ButtonComponent } from "@/components/ButtonComponent";
+import type { DividerComponent } from "@/components/DividerComponent";
+import type { SpacerComponent } from "@/components/SpacerComponent";
+
+// Re-export all types for convenience
+export type { 
+  // Union types
+  ComponentType, 
+  Handle, 
+  GridCell, 
+  NodeGrid, 
+  GridCoordinates, 
+  CellLayout,
+  GridLayoutComponent,
+  // Handle types
+  BaseHandle,
+  LabeledHandle,
+  ButtonHandle,
+  // Field types
+  TextField,
+  NumberField,
+  BoolField,
+  SelectField,
+  // UI component types
+  HeaderComponent,
+  FooterComponent,
+  ButtonComponent,
+  DividerComponent,
+  SpacerComponent,
+};
 
 export interface HandleConfig {
   id: string;
@@ -25,31 +67,14 @@ export interface HandleConfig {
   handle_type?: "base" | "button" | "labeled";
 }
 
-/**
- * Valid field value type
- */
-export type FieldValue = string | number | boolean | null;
+// =============================================================================
+// FIELD VALUE TYPES
+// =============================================================================
 
 /**
- * Configuration for node header customization
+ * Primitive field values - union of all allowed value types
  */
-export interface NodeHeaderConfig {
-  show?: boolean; // Whether to show the header (default: true)
-  icon?: string; // Icon to display in header
-  className?: string; // Custom CSS classes for header
-  bgColor?: string; // Background color (CSS color string)
-  textColor?: string; // Text color (CSS color string)
-  showMinimize?: boolean; // Show minimize button (future)
-}
-
-/**
- * Configuration for node footer
- */
-export interface NodeFooterConfig {
-  show?: boolean; // Whether to show footer
-  text?: string; // Footer text
-  className?: string; // Custom CSS classes
-}
+export type PrimitiveFieldValue = string | number | boolean | null;
 
 /**
  * Configuration for node styling
@@ -77,7 +102,7 @@ export interface ValidationConfig {
 export interface FieldCondition {
   field: string; // Field to check
   operator: "equals" | "notEquals" | "greaterThan" | "lessThan" | "contains";
-  value: FieldValue; // Value to compare against
+  value: PrimitiveFieldValue; // Value to compare against
 }
 
 /**
@@ -92,42 +117,6 @@ export interface FieldConfig {
   className?: string; // Custom CSS classes
 }
 
-export interface CustomNodeData extends Record<string, unknown> {
-  label: string;
-  parameters?: JsonSchema;
-  values?: Record<string, FieldValue>;
-  inputs?: HandleConfig[];
-  outputs?: HandleConfig[];
-  
-  // Layout configuration
-  layoutType?: string;
-  handleType?: "base" | "button" | "labeled"; // Global handle type
-  inputHandleType?: "base" | "button" | "labeled"; // Input-specific handle type
-  outputHandleType?: "base" | "button" | "labeled"; // Output-specific handle type
-  
-  // Enhanced configuration options
-  header?: NodeHeaderConfig; // Header customization
-  footer?: NodeFooterConfig; // Footer configuration
-  style?: NodeStyleConfig; // Style customization
-  validation?: ValidationConfig; // Validation settings
-  fieldConfigs?: Record<string, FieldConfig>; // Per-field configuration
-  description?: string; // Node description (shown as tooltip or in header)
-  category?: string; // Node category for organization
-  icon?: string; // Node icon (fallback if not in header config)
-  
-  // Behavior flags
-  collapsible?: boolean; // Whether the node can be collapsed (future)
-  resizable?: boolean; // Whether the node is resizable (future)
-}
-
-export interface NodeTemplate {
-  type: string;
-  label: string;
-  description?: string;
-  icon?: string;
-  defaultData: CustomNodeData;
-}
-
 export interface ContextMenuState {
   id: string;
   type: "node" | "edge";
@@ -135,5 +124,59 @@ export interface ContextMenuState {
   y: number;
 }
 
-// Re-export field renderer types for convenience
-export type { FieldRenderer, FieldRendererProps } from "./fieldRenderer";
+// =============================================================================
+// CORE ARCHITECTURE: Template + Instance Split
+// =============================================================================
+
+/**
+ * FieldValue - Alias for primitive field values
+ */
+export type FieldValue = PrimitiveFieldValue;
+
+/**
+ * NodeDefinition - Template-level visual structure (immutable, shared)
+ * Defines HOW a node looks
+ * Stored once per node type, referenced by many instances
+ */
+export interface NodeDefinition {
+  grid: NodeGrid;                        // Three-layer grid structure
+  style?: NodeStyleConfig;               // Optional styling
+}
+
+/**
+ * NodeTemplate - Complete node type definition
+ * Registered once, used to create many node instances
+ */
+export interface NodeTemplate {
+  type: string;                          // Unique type identifier
+  label: string;                         // Display name
+  description?: string;                  // Description
+  icon?: string;                         // Icon (emoji or path)
+  category?: string;                     // Category for organization
+  definition: NodeDefinition;            // Visual structure (grid + style)
+  defaultValues: Record<string, PrimitiveFieldValue>; // Default field values
+}
+
+/**
+ * NodeInstance - Instance-level data (mutable, per-node)
+ * Defines WHAT values a specific node instance has
+ * This is synced with Python
+ */
+export interface NodeInstance {
+  id: string;                            // Unique instance ID
+  type: string;                          // References a NodeTemplate.type
+  position: { x: number; y: number };    // Position in canvas
+  values: Record<string, PrimitiveFieldValue>; // Field values
+}
+
+/**
+ * NodesDict - Dict of nodes keyed by ID (from Python)
+ * Python sends dict, JS converts to array for React Flow
+ */
+export type NodesDict = Record<string, Node>;
+
+/**
+ * NodeValues - Field values keyed by node ID
+ * Synced separately from node structure for efficiency
+ */
+export type NodeValues = Record<string, Record<string, PrimitiveFieldValue>>;

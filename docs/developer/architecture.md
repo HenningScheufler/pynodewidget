@@ -1,410 +1,438 @@
-# Python-JavaScript Architecture
+# JavaScript Architecture
 
-This guide explains how PyNodeWidget bridges Python and JavaScript using AnyWidget, and how the two sides communicate.
+**Focus:** Frontend rendering system, data structures, and extension points.
 
-## Overview
+**For Python API documentation**, see the [User Guide](../guides/index.md).
 
-PyNodeWidget is a hybrid application with two main components:
+## Data Flow Overview
 
 ```mermaid
-graph TB
-    subgraph Python["Python (Backend)"]
-        A[Pydantic Models] --> B[NodeBuilder]
-        B --> C[NodeFlowWidget]
-        C --> D[Traitlets]
-        D --> E[AnyWidget Comm Layer]
-    end
+%%{init: {'theme':'base', 'themeVariables': {'fontSize':'14px'}, 'flowchart':{'nodeSpacing':40, 'rankSpacing':60}}}%%
+graph LR
+    A[Python JSON] -->|AnyWidget| B[model.get]
+    B --> C[NodeGrid]
+    C --> D[GridRenderer]
+    D --> E[ComponentFactory]
+    E --> F[React Components]
+    F -->|User Input| G[model.set]
+    G -->|AnyWidget| H[Python]
     
-    subgraph JavaScript["JavaScript (Frontend)"]
-        E --> F[React Component]
-        F --> G[ReactFlow Canvas]
-        G --> H[NodeComponentBuilder]
-        H --> I[Field Renderers]
-        H --> J[Layouts]
-    end
-    
-    subgraph State["Synchronized State"]
-        K[nodes]
-        L[edges]
-        M[node_values]
-        N[viewport]
-    end
-    
-    D -.sync.-> K
-    D -.sync.-> L
-    D -.sync.-> M
-    D -.sync.-> N
-    F -.sync.-> K
-    F -.sync.-> L
-    F -.sync.-> M
-    F -.sync.-> N
-    
-    style Python fill:#e3f2fd
-    style JavaScript fill:#f3e5f5
-    style State fill:#fff3e0
+    style C fill:#e1f5ff
+    style E fill:#fff4e1
 ```
 
-## Communication Layer: AnyWidget
+**Key Points:**
+- Python sends JSON schemas defining node structure
+- JavaScript renders using a three-layer grid system
+- User interactions sync back via AnyWidget
+- No direct Python code execution in JavaScript
 
-[AnyWidget](https://anywidget.dev) provides the communication bridge between Python and JavaScript using the Jupyter widget protocol.
+## Three-Layer Grid System
 
-### How It Works
+The core rendering architecture consists of three independent layers:
 
-1. **Python defines traits** that should sync to JavaScript
-2. **AnyWidget manages serialization** and message passing
-3. **JavaScript receives updates** and re-renders the UI
-4. **User interactions** trigger messages back to Python
-
-### Trait Synchronization
-
-In `widget.py`:
-
-```python
-class NodeFlowWidget(anywidget.AnyWidget):
-    # Traits marked with .tag(sync=True) automatically sync
-    nodes = t.List(trait=t.Dict()).tag(sync=True)
-    edges = t.List(trait=t.Dict()).tag(sync=True)
-    node_values = ObservableDictTrait().tag(sync=True)
-    viewport = t.Dict(default_value={"x": 0, "y": 0, "zoom": 1}).tag(sync=True)
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'fontSize':'13px'}, 'flowchart':{'nodeSpacing':30, 'rankSpacing':50}}}%%
+flowchart TB
+    subgraph Layer1[Layer 1 - CSS Grid]
+        A[NodeGrid] --> B[rows array]
+        A --> C[columns array]
+        A --> D[cells array]
+    end
+    
+    subgraph Layer2[Layer 2 - Cell Layout]
+        D --> E[GridCell]
+        E --> F[coordinates]
+        E --> G[layout type]
+        E --> H[components]
+    end
+    
+    subgraph Layer3[Layer 3 - Components]
+        H --> I[TextField]
+        H --> J[NumberField]
+        H --> K[BaseHandle]
+        H --> L[HeaderComponent]
+    end
+    
+    style Layer1 fill:#e3f2fd
+    style Layer2 fill:#f3e5f5
+    style Layer3 fill:#e8f5e9
 ```
 
-In JavaScript (`index.tsx`):
+### Layer 1: NodeGridRenderer
+
+Positions cells using CSS Grid.
+
+**Input:** `NodeGrid { rows, columns, cells }`  
+**Output:** Positioned grid cells
 
 ```typescript
-export function render({ model, el }) {
-  // Access Python traits via model
-  const nodes = model.get("nodes");
-  const edges = model.get("edges");
-  
-  // Listen for changes from Python
-  model.on("change:nodes", () => {
-    const newNodes = model.get("nodes");
-    // Update UI
-  });
-  
-  // Send changes to Python
-  model.set("nodes", updatedNodes);
-  model.save_changes();
+<div style={{
+  display: "grid",
+  gridTemplateRows: "auto 1fr auto",
+  gridTemplateColumns: "1fr 1fr"
+}}>
+  {cells.map(cell => <GridCell />)}
+</div>
+```
+
+### Layer 2: GridCellRenderer
+
+Arranges components within each cell using flexbox or nested grid.
+
+**Input:** `GridCell { coordinates, layout, components }`  
+**Output:** Laid-out components
+
+```typescript
+<div style={{
+  gridRow: `${row} / span ${rowSpan}`,
+  display: layout.type === "flex" ? "flex" : "grid"
+}}>
+  {components.map(c => <ComponentFactory />)}
+</div>
+```
+
+### Layer 3: ComponentFactory
+
+Renders individual components based on discriminated union type.
+
+**Input:** `ComponentType` (union of all component types)  
+**Output:** React component
+
+```typescript
+switch (component.type) {
+  case "text-field": return <TextField {...component} />
+  case "base-handle": return <BaseHandle {...component} />
+  // ...
 }
 ```
 
-## Python Side Architecture
-
-### Class Hierarchy
-
-```
-anywidget.AnyWidget
-    ├── NodeFlowWidget           # Main widget
-    └── JsonSchemaNodeWidget     # Base node class
-```
-
-### Key Components
-
-#### 1. NodeFlowWidget (`widget.py`)
-
-The main widget managing the entire node graph.
-
-**Responsibilities:**
-- Node type registration
-- Graph state management (nodes, edges)
-- Value synchronization via `ObservableDict`
-- Import/export functionality
-
-**Key Methods:**
-```python
-def register_node_type(self, node_class: Type) -> "NodeFlowWidget":
-    """Register a node type from a class implementing NodeFactory protocol."""
-    
-def update_node_value(self, node_id: str, key: str, value: any) -> None:
-    """Update a value and trigger sync to JavaScript."""
-    
-def get_node_values(self, node_id: str) -> Dict[str, Any]:
-    """Get current values for a node."""
-```
-
-#### 2. JsonSchemaNodeWidget (`json_schema_node.py`)
-
-Base class for custom nodes, implementing the NodeFactory protocol.
-
-**Responsibilities:**
-- Pydantic model to JSON Schema conversion
-- Value management and validation
-- Handle configuration
-- Optional execution logic
-
-**Key Attributes:**
-```python
-class MyNode(JsonSchemaNodeWidget):
-    label: str = "Node Name"          # Required
-    parameters: Type[BaseModel]        # Required
-    icon: str = "⚙️"                   # Optional
-    inputs: List[Dict] = [...]         # Optional
-    outputs: List[Dict] = [...]        # Optional
-```
-
-#### 3. ObservableDict (`observable_dict.py`)
-
-Auto-syncing dictionary that triggers callbacks on mutations.
-
-**Why It Exists:**
-Regular Python dicts don't trigger Traitlets observers when nested values change. `ObservableDict` wraps a dict and fires callbacks on any mutation.
-
-```python
-class ObservableDict(MutableMapping):
-    def __setitem__(self, key, value):
-        self._data[key] = value
-        if self._callback:
-            self._callback()  # Triggers sync to JavaScript
-```
-
-Used for `node_values` to ensure UI updates when nested values change:
-```python
-flow.node_values["node-1"]["threshold"] = 0.8  # Triggers sync
-```
-
-#### 4. NodeFactory Protocol (`protocols.py`)
-
-Defines the interface for node classes:
-
-```python
-class NodeFactory(Protocol):
-    label: str
-    parameters: Type[BaseModel]
-    icon: str
-    category: str
-    description: str
-    inputs: List[Dict[str, str]]
-    outputs: List[Dict[str, str]]
-```
-
-### Node Registration Flow
+## Component Rendering Pipeline
 
 ```mermaid
 sequenceDiagram
-    participant User as User Code
-    participant Widget as NodeFlowWidget
-    participant Metadata as NodeMetadata
-    participant Python as Python State
-    participant JS as JavaScript
-
-    User->>Widget: register_node_type(MyNode)
-    Widget->>Metadata: from_node_class(MyNode)
-    Metadata->>Metadata: Extract JSON Schema from Pydantic
-    Metadata->>Widget: Return metadata dict
-    Widget->>Python: Append to node_templates trait
-    Python->>JS: Sync node_templates
-    JS->>Builder: NodeComponentBuilder.buildComponent(schema)
-    Builder->>JS: Return memoized component
-    JS->>Factory: Register component in NodeFactory
-    JS->>JS: Add to sidebar
+    participant P as Python
+    participant M as Model
+    participant NCB as NodeComponentBuilder
+    participant NGR as NodeGridRenderer
+    participant GCR as GridCellRenderer
+    participant CF as ComponentFactory
+    participant R as React
+    
+    P->>M: Send NodeGrid JSON
+    M->>NCB: buildComponent(grid)
+    NCB->>NGR: Render grid
+    NGR->>GCR: Render each cell
+    GCR->>CF: Render each component
+    CF->>R: <TextField /> etc
+    R-->>M: User changes value
+    M-->>P: Sync back
 ```
 
-## JavaScript Side Architecture
+## Core Data Structures
 
-### Component Hierarchy
+### NodeGrid (Layer 1)
 
-```
-ReactFlowProvider
-  └── NodeFlowComponent (index.tsx)
-        ├── ModelProvider (model context)
-        ├── FieldRegistryProvider
-        ├── NodeSidebar
-        ├── FlowCanvas
-        │     └── NodeComponentBuilder (for each node)
-        │           ├── NodeForm
-        │           │     └── FieldFactory
-        │           │           └── Field Components
-        │           ├── Layout Component
-        │           └── NodeHandles
-        └── FlowToolbar
-```
-
-### Key Components
-
-#### 1. Entry Point (`index.tsx`)
-
-Main render function called by AnyWidget:
+Defines the overall grid structure.
 
 ```typescript
-export function render({ model, el }: { model: AnyWidgetModel; el: HTMLElement }) {
-  const root = createRoot(el);
-  
-  root.render(
-    <ReactFlowProvider>
-      <ModelProvider model={model}>
-        <FieldRegistryProvider>
-          <NodeFlowComponent />
-        </FieldRegistryProvider>
-      </ModelProvider>
-    </ReactFlowProvider>
-  );
+interface NodeGrid {
+  rows: string[];        // e.g., ["auto", "1fr", "auto"]
+  columns: string[];     // e.g., ["200px", "1fr"]
+  cells: GridCell[];     // Array of cells
+  gap?: string;          // Gap between cells
 }
 ```
 
-#### 2. NodeFlowComponent (`index.tsx`)
+### GridCell (Layer 2)
 
-Main React component managing the UI.
+Defines a single cell in the grid.
 
-**State Management:**
-- Uses Zustand stores for local state
-- Subscribes to model changes for Python sync
-- Manages ReactFlow instance
-
-**Key Hooks:**
 ```typescript
-// Subscribe to Python state
-useEffect(() => {
-  model.on("change:nodes", handleNodesChange);
-  model.on("change:edges", handleEdgesChange);
-  model.on("change:node_values", handleValuesChange);
-}, [model]);
-
-// Send changes to Python
-const updateNodeValue = (nodeId: string, key: string, value: any) => {
-  const nodeValues = model.get("node_values");
-  nodeValues[nodeId] = { ...nodeValues[nodeId], [key]: value };
-  model.set("node_values", nodeValues);
-  model.save_changes();
-};
-```
-
-#### 3. JsonSchemaNode (`JsonSchemaNode.tsx`)
-
-Universal node renderer configured from Python.
-
-**Props:**
-```typescript
-interface JsonSchemaNodeProps {
+interface GridCell {
   id: string;
-  data: CustomNodeData;
-  selected: boolean;
+  coordinates: {
+    row: number;         // Starting row (1-indexed)
+    col: number;         // Starting column (1-indexed)
+    row_span?: number;   // Rows to span
+    col_span?: number;   // Columns to span
+  };
+  layout: CellLayout;    // How to arrange components
+  components: ComponentType[];
 }
 
-interface CustomNodeData {
-  label: string;
-  parameters: JsonSchema;
-  values: Record<string, FieldValue>;
-  inputs?: HandleConfig[];
-  outputs?: HandleConfig[];
-  layoutType?: string;
-  handleType?: HandleType;
-  header?: NodeHeaderConfig;
-  footer?: NodeFooterConfig;
-  style?: NodeStyleConfig;
-  fieldConfigs?: Record<string, FieldConfig>;
+interface CellLayout {
+  type: "flex" | "grid";
+  direction?: "row" | "column";
+  gap?: string;
+  // ... flex/grid specific props
 }
 ```
 
-**Rendering Flow:**
-1. Extract configuration from `data` prop
-2. Select layout component based on `layoutType`
-3. Render header (if configured)
-4. Render form fields via `NodeForm`
-5. Render footer (if configured)
-6. Render handles via layout
+### ComponentType (Layer 3)
 
-#### 4. NodeForm (`components/NodeForm.tsx`)
-
-Generates form from JSON Schema and field configs.
+Discriminated union of all component types.
 
 ```typescript
-export function NodeForm({ schema, values, onChange, fieldConfigs }: NodeFormProps) {
-  const properties = schema.properties || {};
-  
-  return (
-    <div className="space-y-2">
-      {Object.entries(properties).map(([key, fieldSchema]) => {
-        const fieldConfig = fieldConfigs?.[key];
-        
-        // Check conditional visibility
-        if (shouldHideField(fieldConfig, values)) {
-          return null;
-        }
-        
-        return (
-          <FieldFactory
-            key={key}
-            name={key}
-            schema={fieldSchema}
-            value={values[key]}
-            onChange={(value) => onChange(key, value)}
-            config={fieldConfig}
-          />
-        );
-      })}
-    </div>
-  );
+type ComponentType =
+  | { type: "text", id: string, label: string, value?: string }
+  | { type: "number", id: string, label: string, value?: number, min?: number, max?: number }
+  | { type: "bool", id: string, label: string, value?: boolean }
+  | { type: "select", id: string, label: string, value?: string, options: string[] }
+  | { type: "base-handle", id: string, handle_type: "input" | "output", label: string }
+  | { type: "labeled-handle", id: string, handle_type: "input" | "output", label: string }
+  | { type: "button-handle", id: string, handle_type: "input" | "output", label: string }
+  | { type: "header", id: string, title: string, icon?: string }
+  | { type: "grid-layout", id: string, ...grid: NodeGrid }  // Recursive!
+  | ...
+```
+
+**Key Feature:** Type safety via Valibot discriminated unions. Invalid component configurations are caught at runtime and development time.
+
+### Template vs Instance
+
+```mermaid
+graph LR
+    subgraph Template[NodeTemplate - Blueprint]
+        T1[type: 'processor']
+        T2[definition: NodeGrid]
+        T3[defaultValues]
+    end
+    
+    subgraph Instance1[NodeInstance - Building 1]
+        I1[id: 'proc-1']
+        I2[type: 'processor']
+        I3[values: specific]
+    end
+    
+    subgraph Instance2[NodeInstance - Building 2]
+        I4[id: 'proc-2']
+        I5[type: 'processor']
+        I6[values: different]
+    end
+    
+    Template -.references.-> Instance1
+    Template -.references.-> Instance2
+    
+    style Template fill:#e1f5ff
+    style Instance1 fill:#fff4e1
+    style Instance2 fill:#fff4e1
+```
+
+**NodeTemplate:** Defines structure (immutable, shared)
+```typescript
+interface NodeTemplate {
+  type: string;                    // Unique type ID
+  label: string;                   // Display name
+  definition: {
+    grid: NodeGrid;                // Visual structure
+    style?: NodeStyleConfig;       // Optional styling
+  };
+  defaultValues: Record<string, any>;
 }
 ```
 
-#### 5. FieldFactory (`components/fields/FieldFactory.tsx`)
+**NodeInstance:** Runtime data (mutable, per-node)
+```typescript
+interface NodeInstance {
+  id: string;                      // Unique instance ID
+  type: string;                    // References NodeTemplate.type
+  position: { x: number, y: number };
+  values: Record<string, PrimitiveFieldValue>;
+}
+```
 
-Routes to appropriate field renderer:
+## Value Synchronization
+
+How user input flows from React to Python:
+
+```mermaid
+sequenceDiagram
+    participant U as User Input
+    participant F as Field Component
+    participant C as Context
+    participant M as Model
+    participant P as Python
+    
+    U->>F: onChange
+    F->>C: useSetNodeValues
+    C->>C: Update React state
+    C->>M: model.set("node_values")
+    M->>P: Sync via AnyWidget
+    P-->>M: Update (if needed)
+    M-->>C: model.on("change")
+    C-->>F: Re-render
+```
+
+**Key Pattern:**
+```typescript
+const setValue = useSetNodeValues();
+
+// In field component
+onChange={(e) => setValue(prev => ({
+  ...prev,
+  [nodeId]: { 
+    ...prev[nodeId], 
+    [fieldId]: e.target.value 
+  }
+}))}
+```
+
+## Services
+
+Separate business logic from components.
+
+### nodeLayoutService.ts
+
+Handle management and layout operations.
 
 ```typescript
-export function FieldFactory({ name, schema, value, onChange, config }: FieldFactoryProps) {
-  // Check for enum
-  if (schema.enum) {
-    return <SelectField {...props} />;
-  }
-  
-  // Check registry for custom types
-  const customRenderer = fieldRegistry.get(schema.type);
-  if (customRenderer) {
-    return customRenderer({ value, onChange, schema, config });
-  }
-  
-  // Built-in types
-  switch (schema.type) {
-    case "string": return <StringField {...props} />;
-    case "number": return <NumberField {...props} />;
-    case "integer": return <NumberField {...props} />;
-    case "boolean": return <BooleanField {...props} />;
-    default: return <StringField {...props} />;
-  }
+export class NodeLayoutService {
+  static updateHandleType(nodes, nodeId, handleId, handleType): Node[]
+  static updateNodeLayout(nodes, nodeId, layoutType): Node[]
 }
 ```
 
-#### 6. Registry System
+### nodeDataService.ts
 
-Three registries provide extensibility:
+Node data transformations.
 
-**FieldRegistry** (`components/fields/FieldRegistry.ts`):
 ```typescript
-class FieldRegistry {
-  private renderers = new Map<string, FieldRenderer>();
-  
-  register(type: string, renderer: FieldRenderer): void {
-    this.renderers.set(type, renderer);
-  }
-  
-  get(type: string): FieldRenderer | undefined {
-    return this.renderers.get(type);
-  }
+export class NodeDataService {
+  // Data manipulation methods
 }
-
-export const fieldRegistry = new FieldRegistry();
 ```
 
-**LayoutFactory** (`components/layouts/LayoutFactory.tsx`):
+**Extension Point:** Add custom services by exporting from `src/services/`.
+
+## AnyWidget Communication Patterns
+
+Brief overview of Python ↔ JavaScript interaction.
+
+### Python → JavaScript
+
+```python
+# Python updates trait
+widget.node_values = {"node-1": {"threshold": 0.8}}
+```
+
 ```typescript
-class LayoutFactory {
-  private layouts = new Map<string, React.ComponentType<LayoutProps>>();
-  
-  constructor() {
-    this.layouts.set("horizontal", HorizontalLayout);
-    this.layouts.set("vertical", VerticalLayout);
-    this.layouts.set("compact", CompactLayout);
-  }
-  
-  getLayout(type: string): React.ComponentType<LayoutProps> {
-    return this.layouts.get(type) || HorizontalLayout;
-  }
-}
+// JavaScript receives update
+model.on("change:node_values", () => {
+  const values = model.get("node_values");
+  // Update UI
+});
 ```
 
-**HandleFactory** (`components/handles/HandleFactory.tsx`):
-Similar pattern for handle types.
+### JavaScript → Python
+
+```typescript
+// JavaScript updates model
+model.set("node_values", updatedValues);
+model.save_changes();
+```
+
+```python
+# Python observes change
+@observe("node_values")
+def _on_values_change(self, change):
+    print(change["new"])
+```
+
+**Key Point:** All communication is via JSON-serializable data. No function calls across the boundary.
+
+## Extension Points
+
+```mermaid
+graph TD
+    A[Extension Points] --> B[ComponentType]
+    A --> C[Services]
+    A --> D[Hooks]
+    
+    B --> B1[1. Define Valibot Schema]
+    B --> B2[2. Create React Component]
+    B --> B3[3. Register in ComponentFactory]
+    
+    C --> C1[Export from services/]
+    
+    D --> D1[Follow useModelState pattern]
+    
+    style A fill:#fff176
+    style B fill:#81c784
+    style C fill:#64b5f6
+    style D fill:#ba68c1
+```
+
+### Adding Components
+
+1. **Define schema** in component file using Valibot
+2. **Create React component** implementing the interface
+3. **Register** in `ComponentFactory.tsx`:
+   - Add schema to `ComponentTypeSchema` variant
+   - Add render case to switch statement
+
+See [Extension Guide](extending.md) for detailed recipes.
+
+### Adding Services
+
+Export functions from `src/services/yourService.ts`, then export from `src/index.tsx`.
+
+### Custom Hooks
+
+Follow the `useModelState` pattern from `@anywidget/react` to access model state.
+
+## Component Reference Table
+
+| Type | Purpose | Key Props |
+|------|---------|--------|
+| `text` | Text input | `id, label, value, placeholder` |
+| `number` | Number input | `id, label, value, min, max` |
+| `bool` | Checkbox | `id, label, value` |
+| `select` | Dropdown | `id, label, value, options` |
+| `base-handle` | Minimal dot handle | `id, handle_type, label, dataType` |
+| `labeled-handle` | Handle with text label | `id, handle_type, label, dataType` |
+| `button-handle` | Button-styled handle | `id, handle_type, label, dataType` |
+| `header` | Node header | `id, title, icon, show_minimize, show_delete` |
+| `footer` | Node footer | `id, text` |
+| `button` | Button | `id, label, variant` |
+| `divider` | Horizontal line | `id` |
+| `spacer` | Empty space | `id, size` |
+| `grid-layout` | Nested grid | `id, rows, columns, cells` |
+
+**Full schemas:** See `src/components/ComponentFactory.tsx` and individual component files.
+
+## Next Steps
+
+- **[Extension Guide](extending.md)** - Copy-paste recipes for adding custom components
+- **[JavaScript Development](javascript.md)** - Setup and build commands
+- **[Hooks Reference](hooks.md)** - Available React hooks
+The architecture uses **Valibot discriminated unions** instead of registries. Components are validated at runtime using schemas defined in each component file.
+
+**Example component integration:**
+```typescript
+// 1. Define schema in component file
+export const TextFieldSchema = v.object({
+  id: v.string(),
+  type: v.literal("text"),
+  label: v.string(),
+  value: v.optional(v.string()),
+  placeholder: v.optional(v.string())
+});
+
+// 2. Add to ComponentFactory discriminated union
+export const ComponentTypeSchema = v.variant("type", [
+  TextFieldSchema,
+  NumberFieldSchema,
+  // ... other schemas
+]);
+
+// 3. Handle in ComponentFactory switch
+switch (component.type) {
+  case "text":
+    return <StringField component={component} onValueChange={onValueChange} />;
+  // ...
+}
+```
 
 ### State Flow
 
@@ -555,7 +583,7 @@ flow.update_node_value("node-1", "threshold", 0.8)
 ### JavaScript Side
 
 - **ReactFlow** handles virtualization automatically
-- **Zustand** provides efficient state updates
+- **React Context** provides efficient state updates via `useModelState` hook
 - **React.memo** used for expensive components
 
 ### Optimization Tips

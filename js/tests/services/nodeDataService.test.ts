@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { NodeDataService } from '../../src/services/nodeDataService';
 import type { Node } from '@xyflow/react';
-import type { CustomNodeData, JsonSchemaProperty } from '../../src/types/schema';
+import type { CustomNodeData, NodeGrid, GridCell, BaseHandle } from '../../src/types/schema';
 
 describe('NodeDataService', () => {
   // Helper to create a test node
@@ -11,6 +11,11 @@ describe('NodeDataService', () => {
     position: { x: 0, y: 0 },
     data: {
       label: 'Test Node',
+      grid: {
+        rows: ['auto'],
+        columns: ['1fr'],
+        cells: [],
+      },
       values: {},
       ...data,
     } as unknown as Record<string, unknown>,
@@ -110,125 +115,108 @@ describe('NodeDataService', () => {
     });
   });
 
-  describe('getFieldValue', () => {
-    it('should return the field value if it exists', () => {
-      const node = createTestNode('node-1', { values: { field: 'myValue' } });
-      const property: JsonSchemaProperty = { type: 'string' };
-
-      const value = NodeDataService.getFieldValue(node, 'field', property);
-
-      expect(value).toBe('myValue');
-    });
-
-    it('should return the default value if field value is undefined', () => {
-      const node = createTestNode('node-1', { values: {} });
-      const property: JsonSchemaProperty = { type: 'string', default: 'defaultValue' };
-
-      const value = NodeDataService.getFieldValue(node, 'field', property);
-
-      expect(value).toBe('defaultValue');
-    });
-
-    it('should return the default value if field value is null', () => {
-      const node = createTestNode('node-1', { values: { field: null } });
-      const property: JsonSchemaProperty = { type: 'string', default: 'defaultValue' };
-
-      const value = NodeDataService.getFieldValue(node, 'field', property);
-
-      expect(value).toBe('defaultValue');
-    });
-
-    it('should return null if no value and no default', () => {
-      const node = createTestNode('node-1', { values: {} });
-      const property: JsonSchemaProperty = { type: 'string' };
-
-      const value = NodeDataService.getFieldValue(node, 'field', property);
-
-      expect(value).toBe(null);
-    });
-
-    it('should prioritize actual value over default', () => {
-      const node = createTestNode('node-1', { values: { field: 'actualValue' } });
-      const property: JsonSchemaProperty = { type: 'string', default: 'defaultValue' };
-
-      const value = NodeDataService.getFieldValue(node, 'field', property);
-
-      expect(value).toBe('actualValue');
-    });
-
-    it('should handle different value types correctly', () => {
-      const node = createTestNode('node-1', {
-        values: { str: 'text', num: 0, bool: false },
-      });
-
-      expect(NodeDataService.getFieldValue(node, 'str', { type: 'string' })).toBe('text');
-      expect(NodeDataService.getFieldValue(node, 'num', { type: 'number' })).toBe(0);
-      expect(NodeDataService.getFieldValue(node, 'bool', { type: 'boolean' })).toBe(false);
-    });
-
-    it('should handle zero and empty string as valid values', () => {
-      const node = createTestNode('node-1', { values: { zero: 0, empty: '' } });
-
-      expect(
-        NodeDataService.getFieldValue(node, 'zero', { type: 'number', default: 10 })
-      ).toBe(0);
-      expect(
-        NodeDataService.getFieldValue(node, 'empty', { type: 'string', default: 'default' })
-      ).toBe('');
-    });
-  });
-
   describe('isFieldRequired', () => {
-    it('should return true if field is in required array', () => {
-      const node = createTestNode('node-1', {
-        parameters: {
-          type: 'object',
-          properties: {},
-          required: ['field1', 'field2'],
-        },
-      });
+    it('should return true if component with matching ID has required=true', () => {
+      const grid: NodeGrid = {
+        rows: ['auto'],
+        columns: ['80px', '1fr', '80px'],
+        cells: [
+          {
+            id: 'cell-1',
+            coordinates: { row: 1, col: 1 },
+            components: [
+              {
+                id: 'input1',
+                type: 'base-handle',
+                handle_type: 'input',
+                label: 'Input 1',
+                required: true,
+              } as BaseHandle,
+            ],
+          },
+          {
+            id: 'cell-2',
+            coordinates: { row: 1, col: 2 },
+            components: [
+              {
+                id: 'input2',
+                type: 'base-handle',
+                handle_type: 'input',
+                label: 'Input 2',
+                required: false,
+              } as BaseHandle,
+            ],
+          },
+        ],
+      };
+      const node = createTestNode('node-1', { grid });
 
-      expect(NodeDataService.isFieldRequired(node, 'field1')).toBe(true);
-      expect(NodeDataService.isFieldRequired(node, 'field2')).toBe(true);
+      expect(NodeDataService.isFieldRequired(node, 'input1')).toBe(true);
+      expect(NodeDataService.isFieldRequired(node, 'input2')).toBe(false);
     });
 
-    it('should return false if field is not in required array', () => {
-      const node = createTestNode('node-1', {
-        parameters: {
-          type: 'object',
-          properties: {},
-          required: ['field1'],
-        },
-      });
+    it('should return false if component does not have required property', () => {
+      const grid: NodeGrid = {
+        rows: ['auto'],
+        columns: ['1fr'],
+        cells: [
+          {
+            id: 'cell-1',
+            coordinates: { row: 1, col: 1 },
+            components: [
+              {
+                id: 'text-field',
+                type: 'text',
+                label: 'Text Field',
+              },
+            ],
+          },
+        ],
+      };
+      const node = createTestNode('node-1', { grid });
 
-      expect(NodeDataService.isFieldRequired(node, 'field2')).toBe(false);
+      expect(NodeDataService.isFieldRequired(node, 'text-field')).toBe(false);
     });
 
-    it('should return false if required array is empty', () => {
+    it('should return false if field ID is not found in grid', () => {
+      const grid: NodeGrid = {
+        rows: ['auto'],
+        columns: ['1fr'],
+        cells: [
+          {
+            id: 'cell-1',
+            coordinates: { row: 1, col: 1 },
+            components: [
+              {
+                id: 'field1',
+                type: 'text',
+                label: 'Field 1',
+              },
+            ],
+          },
+        ],
+      };
+      const node = createTestNode('node-1', { grid });
+
+      expect(NodeDataService.isFieldRequired(node, 'nonexistent')).toBe(false);
+    });
+
+    it('should return false if grid has no cells', () => {
       const node = createTestNode('node-1', {
-        parameters: {
-          type: 'object',
-          properties: {},
-          required: [],
+        grid: {
+          rows: ['auto'],
+          columns: ['1fr'],
+          cells: [],
         },
       });
 
       expect(NodeDataService.isFieldRequired(node, 'field1')).toBe(false);
     });
 
-    it('should return false if required array is undefined', () => {
+    it('should return false if grid is undefined', () => {
       const node = createTestNode('node-1', {
-        parameters: {
-          type: 'object',
-          properties: {},
-        },
+        grid: undefined as any,
       });
-
-      expect(NodeDataService.isFieldRequired(node, 'field1')).toBe(false);
-    });
-
-    it('should return false if parameters is undefined', () => {
-      const node = createTestNode('node-1', {});
 
       expect(NodeDataService.isFieldRequired(node, 'field1')).toBe(false);
     });

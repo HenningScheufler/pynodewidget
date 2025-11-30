@@ -1,146 +1,100 @@
-# Hooks API
+# Hooks Reference
 
-React hooks for common PyNodeWidget operations: auto-layout, context menus, exports, and responsive design.
+Available React hooks for working with PyNodeWidget.
+
+## Hook Interactions
+
+```mermaid
+graph TB
+    subgraph Hooks
+        A[useSetNodeValues]
+        B[useSetNodesDict]
+        C[useAutoLayout]
+        D[useContextMenu]
+        E[useExport]
+    end
+    
+    subgraph Contexts
+        F[SetNodeValuesContext]
+        G[SetNodesDictContext]
+        H[NodeDataContext]
+    end
+    
+    subgraph Model
+        I[AnyWidget Model]
+    end
+    
+    A --> F
+    B --> G
+    F --> I
+    G --> I
+    H --> I
+    C --> B
+    E --> I
+    
+    style Hooks fill:#e3f2fd
+    style Contexts fill:#f3e5f5
+    style Model fill:#fff3e0
+```
+
+## useSetNodeValues
+
+Update field values for nodes.
+
+**Usage:**
+```typescript
+const setValue = useSetNodeValues();
+
+// Update single field
+setValue(prev => ({
+  ...prev,
+  [nodeId]: { ...prev[nodeId], [fieldId]: newValue }
+}));
+```
+
+## useSetNodesDict
+
+Update node structure.
+
+**Usage:**
+```typescript
+const setNodes = useSetNodesDict();
+
+setNodes(prev => ({ ...prev, [nodeId]: updatedNode }));
+```
 
 ## useAutoLayout
 
-Automatically arrange nodes using Dagre layout algorithm.
+Auto-position nodes with Dagre.
 
+**Usage:**
 ```typescript
-import { useAutoLayout } from 'pynodewidget';
+const { applyLayout } = useAutoLayout();
 
-const { onLayout } = useAutoLayout(nodes, edges, setNodes);
-
-// Vertical layout
-<button onClick={() => onLayout("TB")}>Layout Vertical</button>
-
-// Horizontal layout
-<button onClick={() => onLayout("LR")}>Layout Horizontal</button>
+applyLayout(nodes, edges, 'TB'); // 'TB', 'LR', 'BT', 'RL'
 ```
-
-**Parameters:**
-- `nodes` - Array of ReactFlow nodes
-- `edges` - Array of ReactFlow edges
-- `setNodes` - Function to update nodes
-
-**Returns:**
-- `onLayout(direction: "TB" | "LR")` - Trigger layout
-
----
 
 ## useContextMenu
 
-Right-click context menu for nodes and edges.
+Right-click menus.
 
+**Usage:**
 ```typescript
-import { useContextMenu } from 'pynodewidget';
+const { openMenu } = useContextMenu();
 
-const {
-  contextMenu,
-  onNodeContextMenu,
-  onEdgeContextMenu,
-  onPaneClick,
-  onDelete,
-  closeContextMenu
-} = useContextMenu(setNodes, setEdges);
-
-<ReactFlow
-  onNodeContextMenu={onNodeContextMenu}
-  onEdgeContextMenu={onEdgeContextMenu}
-  onPaneClick={onPaneClick}
-/>
-
-{contextMenu && (
-  <ContextMenu
-    x={contextMenu.x}
-    y={contextMenu.y}
-    onDelete={onDelete}
-    onClose={closeContextMenu}
-  />
-)}
+openMenu({ id, type: 'node', x, y });
 ```
-
-**State:**
-- `contextMenu: { id: string, type: "node" | "edge", x: number, y: number } | null`
-
----
 
 ## useExport
 
-Export workflow to JSON file.
+Export to JSON/image.
 
+**Usage:**
 ```typescript
-import { useExport } from 'pynodewidget';
-
-const { exportToJSON } = useExport(nodes, edges);
-
-<button onClick={exportToJSON}>Export JSON</button>
+const { exportJSON, exportImage } = useExport();
 ```
 
-Downloads `nodeflow-data.json` with current graph state.
+## Next Steps
 
----
-
-## useMobile
-
-Detect mobile device for responsive UI.
-
-```typescript
-import { useMobile } from 'pynodewidget';
-
-const isMobile = useMobile();
-
-{isMobile ? <MobileNav /> : <DesktopNav />}
-```
-
-Uses media query: `(max-width: 768px)`
-
----
-
-## Complete Example
-
-```typescript
-import { 
-  useAutoLayout, 
-  useContextMenu, 
-  useExport, 
-  useMobile 
-} from 'pynodeflow';
-
-function NodeEditor() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  
-  const { onLayout } = useAutoLayout(nodes, edges, setNodes);
-  const { exportToJSON } = useExport(nodes, edges);
-  const contextMenu = useContextMenu(setNodes, setEdges);
-  const isMobile = useMobile();
-  
-  return (
-    <>
-      <div className="toolbar">
-        <button onClick={() => onLayout("TB")}>Auto Layout</button>
-        <button onClick={exportToJSON}>Export</button>
-      </div>
-      
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeContextMenu={contextMenu.onNodeContextMenu}
-        onPaneClick={contextMenu.onPaneClick}
-        fitView={!isMobile}
-      />
-    </>
-  );
-}
-```
-
----
-
-## See Also
-
-- [State Management](state.md) - Zustand stores
-- [Component Library](components.md) - React components
-- [Architecture](architecture.md) - System design
+- **[Architecture](architecture.md)** - Data flow
+- **[Extension Guide](extending.md)** - Custom components

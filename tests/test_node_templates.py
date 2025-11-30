@@ -23,9 +23,7 @@ def test_add_node_type_from_schema():
         type_name="test_node",
         label="Test Node",
         description="A test node",
-        icon="🧪",
-        inputs=[{"id": "in1", "label": "Input 1"}],
-        outputs=[{"id": "out1", "label": "Output 1"}]
+        icon="🧪"
     )
     
     assert len(widget.node_templates) == 1
@@ -34,9 +32,8 @@ def test_add_node_type_from_schema():
     assert template["label"] == "Test Node"
     assert template["description"] == "A test node"
     assert template["icon"] == "🧪"
-    assert template["defaultData"]["parameters"] == schema
-    assert len(template["defaultData"]["inputs"]) == 1
-    assert len(template["defaultData"]["outputs"]) == 1
+    assert "grid" in template["definition"]
+    assert "cells" in template["definition"]["grid"]
 
 
 def test_add_node_type_default_values():
@@ -58,7 +55,7 @@ def test_add_node_type_default_values():
     )
     
     template = widget.node_templates[0]
-    values = template["defaultData"]["values"]
+    values = template["defaultValues"]
     assert values["name"] == "processor"
     assert values["count"] == 42
 
@@ -74,8 +71,8 @@ def test_add_node_type_without_handles():
     )
     
     template = widget.node_templates[0]
-    assert template["defaultData"]["inputs"] == []
-    assert template["defaultData"]["outputs"] == []
+    # Check grid exists
+    assert "grid" in template["definition"]
 
 
 def test_multiple_node_types():
@@ -117,8 +114,8 @@ def test_method_chaining():
     assert len(widget.node_templates) == 2
 
 
-def test_add_node_type_from_pydantic():
-    """Test adding node type from Pydantic model."""
+def test_add_node_type_with_pydantic_schema():
+    """Test adding node type using Pydantic model schema."""
     pytest.importorskip("pydantic")
     from pydantic import BaseModel, Field
     
@@ -128,8 +125,9 @@ def test_add_node_type_from_pydantic():
         enabled: bool = True
     
     widget = NodeFlowWidget()
-    widget.add_node_type_from_pydantic(
-        model_class=TestModel,
+    # Use add_node_type_from_schema with Pydantic's model_json_schema()
+    widget.add_node_type_from_schema(
+        json_schema=TestModel.model_json_schema(),
         type_name="pydantic_node",
         label="Pydantic Node",
         icon="🐍"
@@ -139,20 +137,5 @@ def test_add_node_type_from_pydantic():
     template = widget.node_templates[0]
     assert template["type"] == "pydantic_node"
     assert template["icon"] == "🐍"
-    assert "properties" in template["defaultData"]["parameters"]
-
-
-def test_add_node_type_from_pydantic_without_pydantic():
-    """Test that proper error is raised when Pydantic is not available."""
-    widget = NodeFlowWidget()
-    
-    # Mock a non-Pydantic class
-    class NotPydantic:
-        pass
-    
-    with pytest.raises(ValueError, match="must be a Pydantic BaseModel"):
-        widget.add_node_type_from_pydantic(
-            model_class=NotPydantic,
-            type_name="invalid",
-            label="Invalid"
-        )
+    assert "grid" in template["definition"]
+    assert "cells" in template["definition"]["grid"]

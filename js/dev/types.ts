@@ -1,25 +1,12 @@
-export interface Layout {
-  type: string;
-  label: string;
-}
+import type { NodeTemplate, NodeDefinition } from '../src/types/schema';
+import type { NodeData } from '../src/contexts/NodeDataContext';
 
-export interface HandleType {
-  type: string;
-  label: string;
-}
+// Re-export NodeTemplate for dev convenience
+export type { NodeTemplate, NodeDefinition, NodeData };
 
-export interface NodeData {
-  label: string;
-  parameters: any;
-  inputs: Array<{ id: string; label: string }>;
-  outputs: Array<{ id: string; label: string }>;
-  values: Record<string, any>;
-  layoutType?: string;
-  handleType?: string;
-}
-
+// Use NodeTemplate for both layout and handle templates
 export interface Combination {
-  layout: Layout;
-  handle: HandleType;
+  layout: NodeTemplate;
+  handle: NodeTemplate;
   label: string;
 }

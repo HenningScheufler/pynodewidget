@@ -1,8 +1,14 @@
-"""JsonSchemaNodeWidget - Base class for creating custom nodes.
+"""NodeBuilder - Quick iteration tool for building custom node appearances.
 
-This module provides the JsonSchemaNodeWidget base class that implements the
-NodeFactory protocol. It serves as a convenient base class for defining custom
-node types with Pydantic models.
+NodeBuilder provides a convenient way to rapidly prototype and iterate on node designs
+using the modern grid-based architecture (NodeGrid → GridCell → Components).
+
+This class implements the NodeFactory protocol and can be used to:
+1. Quickly create standalone node widgets for testing appearances
+2. Define custom node types with Pydantic models for rapid prototyping
+3. Serve as a base class for production node types
+
+For production use, consider defining nodes directly with the grid system for more control.
 """
 
 import anywidget
@@ -12,7 +18,7 @@ from typing import Dict, Any, Type, List, Optional, Union
 from pydantic import BaseModel
 
 
-class JsonSchemaNodeWidget(anywidget.AnyWidget):
+class NodeBuilder(anywidget.AnyWidget):
     """Base class for custom node widgets implementing the NodeFactory protocol.
     
     This class can be used in two ways:
@@ -31,7 +37,7 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         ...     threshold: float = Field(default=0.5, ge=0, le=1)
         ...     mode: str = "auto"
         >>> 
-        >>> class ProcessingNode(JsonSchemaNodeWidget):
+        >>> class ProcessingNode(NodeBuilder):
         ...     parameters = ProcessingConfig
         ...     label = "Image Processor"
         ...     icon = "🖼️"
@@ -54,13 +60,10 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
     icon: str = ""
     category: str = "general"
     description: str = ""
-    inputs: Union[Type[BaseModel], List[Dict[str, str]]] = []
-    outputs: Union[Type[BaseModel], List[Dict[str, str]]] = []
-    layout_type: str = "horizontal"
-    handle_type: str = "base"
+    grid_layout: Optional[Dict[str, Any]] = None  # Grid layout config
     
     def __init__(self, id=None, data=None, selected=None, **initial_values):
-        """Initialize the node widget.
+        """Initialize the node builder.
         
         Args:
             id: Widget ID (default: "json-schema-node")
@@ -102,53 +105,45 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         not as a standalone widget with pre-existing data.
         
         Returns:
-            Dictionary with label, parameters schema, inputs, outputs, and values
+            Dictionary with label, grid layout, and values (DEPRECATED - will be removed)
+            
+        Note: This method is deprecated as part of the CustomNodeData removal.
+        Use NodeDefinition and separate defaultValues instead.
         """
         if self.__class__.parameters is None:
             return {}
         
-        # Generate JSON Schema from Pydantic model
-        parameters_schema = self.__class__.parameters.model_json_schema()
-        
         # Get current values from config instance
         values = self._config.model_dump() if self._config else {}
         
-        # Convert inputs/outputs if they're Pydantic models
-        inputs = self.__class__.inputs
-        outputs = self.__class__.outputs
+        # Get grid layout from class attribute or use default
+        from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
+        from .models import NodeDefinition
         
-        if isinstance(inputs, type) and issubclass(inputs, BaseModel):
-            inputs = self._pydantic_to_handles(inputs)
-        if isinstance(outputs, type) and issubclass(outputs, BaseModel):
-            outputs = self._pydantic_to_handles(outputs)
+        grid_layout = self.__class__.grid_layout
+        if grid_layout is None:
+            # Generate default vertical layout with JSON schema fields
+            json_schema = self.__class__.parameters.model_json_schema()
+            field_components = json_schema_to_components(json_schema, values)
+            grid_layout = create_vertical_stack_grid(middle_components=field_components)
         
-        return {
-            "label": self.__class__.label,
-            "parameters": parameters_schema,
-            "inputs": inputs if isinstance(inputs, list) else [],
-            "outputs": outputs if isinstance(outputs, list) else [],
-            "values": values,
-            "layoutType": self.__class__.layout_type,
-            "handleType": self.__class__.handle_type,
+        # Build and validate data dict using new NodeDefinition
+        definition_dict = {
+            "grid": grid_layout,
         }
-    
-    @staticmethod
-    def _pydantic_to_handles(model: Type[BaseModel]) -> List[Dict[str, str]]:
-        """Convert a Pydantic model to handle configurations.
         
-        Args:
-            model: Pydantic BaseModel defining handles
-            
-        Returns:
-            List of handle configuration dictionaries
-        """
-        handles = []
-        for field_name, field_info in model.model_fields.items():
-            handles.append({
-                "id": field_name,
-                "label": field_info.title or field_name.replace("_", " ").title(),
-            })
-        return handles
+        try:
+            # Validate the definition structure
+            validated_definition = NodeDefinition(**definition_dict)
+            # Return both definition and values for backward compatibility
+            return {
+                "definition": validated_definition.model_dump(),
+                "values": values,
+                "label": self.__class__.label
+            }
+        except Exception as e:
+            raise ValueError(f"Failed to create valid node definition: {e}") from e
+    
     
     # NodeFactory protocol methods
     
@@ -237,12 +232,7 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         icon: str = "",
         category: str = "general",
         description: str = "",
-        inputs: Optional[Union[Type[BaseModel], List[Dict[str, str]]]] = None,
-        outputs: Optional[Union[Type[BaseModel], List[Dict[str, str]]]] = None,
-        layout_type: str = "horizontal",
-        handle_type: str = "base",
-        input_handle_type: Optional[str] = None,
-        output_handle_type: Optional[str] = None,
+        grid_layout: Optional[Dict[str, Any]] = None,
         initial_values: Optional[Dict[str, Any]] = None,
         # Enhanced configuration options
         header: Optional[Dict[str, Any]] = None,
@@ -251,8 +241,8 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         validation: Optional[Dict[str, Any]] = None,
         fieldConfigs: Optional[Dict[str, Dict[str, Any]]] = None,
         **kwargs: Any,  # Catch any additional config options
-    ) -> "JsonSchemaNodeWidget":
-        """Create a widget from a Pydantic model (factory method for convenience).
+    ) -> "NodeBuilder":
+        """Create a node from a Pydantic model (factory method for convenience).
         
         This is a convenience method for creating a node widget without
         defining a full subclass. For better code organization, prefer
@@ -264,12 +254,7 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
             icon: Unicode emoji or icon
             category: Node category
             description: Help text
-            inputs: Input handle definitions
-            outputs: Output handle definitions
-            layout_type: Layout style (e.g., "horizontal", "vertical")
-            handle_type: Default handle type ("base", "button", or "labeled")
-            input_handle_type: Handle type for inputs (overrides handle_type)
-            output_handle_type: Handle type for outputs (overrides handle_type)
+            grid_layout: Grid layout configuration dict
             initial_values: Initial parameter values
             header: Header configuration dict
             footer: Footer configuration dict
@@ -291,10 +276,7 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         AnonymousNode.icon = icon
         AnonymousNode.category = category
         AnonymousNode.description = description
-        AnonymousNode.inputs = inputs or []
-        AnonymousNode.outputs = outputs or []
-        AnonymousNode.layout_type = layout_type
-        AnonymousNode.handle_type = handle_type
+        AnonymousNode.grid_layout = grid_layout
         
         # Create instance with initial values
         instance = AnonymousNode(**(initial_values or {}))
@@ -302,10 +284,6 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         # Apply enhanced configuration to the data dict
         data = instance.data.copy()
         
-        if input_handle_type:
-            data["inputHandleType"] = input_handle_type
-        if output_handle_type:
-            data["outputHandleType"] = output_handle_type
         if header:
             data["header"] = header
         if footer:
@@ -333,11 +311,10 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         icon: str = "",
         category: str = "general",
         description: str = "",
-        inputs: Optional[List[Dict[str, str]]] = None,
-        outputs: Optional[List[Dict[str, str]]] = None,
+        grid_layout: Optional[Dict[str, Any]] = None,
         initial_values: Optional[Dict[str, Any]] = None,
-    ) -> "JsonSchemaNodeWidget":
-        """Create a widget from a JSON schema (legacy support).
+    ) -> "NodeBuilder":
+        """Create a node from a JSON schema (legacy support for rapid prototyping).
         
         This method provides backward compatibility for code using raw JSON schemas.
         For new code, use Pydantic models with the parameters attribute instead.
@@ -348,8 +325,7 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
             icon: Unicode emoji or icon
             category: Node category
             description: Help text
-            inputs: Input handle definitions
-            outputs: Output handle definitions
+            grid_layout: Grid layout configuration dict
             initial_values: Initial parameter values
             
         Returns:
@@ -369,9 +345,7 @@ class JsonSchemaNodeWidget(anywidget.AnyWidget):
         # Create standalone widget with data dict
         data = {
             "label": label,
-            "parameters": schema,  # Note: using 'parameters' instead of 'schema'
-            "inputs": inputs or [],
-            "outputs": outputs or [],
+            "grid": {"cells": [], "rows": ["1fr"], "columns": ["1fr"], "gap": "8px"},
             "values": default_values,
         }
         

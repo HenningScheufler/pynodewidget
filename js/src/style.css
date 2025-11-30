@@ -128,14 +128,83 @@
 
 /* React Flow Custom Handles */
 .react-flow__handle {
-  width: 10px;
-  height: 10px;
-  background: #000000; /* Fallback to black */
-  background: hsl(var(--primary, 222.2 47.4% 11.2%)); /* Use primary or dark fallback */
+  width: 12px;
+  height: 12px;
+  background: hsl(var(--primary));
   border: 2px solid white;
 }
 
 .react-flow__handle:hover {
-  background: rgba(0, 0, 0, 0.8); /* Fallback */
-  background: hsl(var(--primary, 222.2 47.4% 11.2%) / 0.8);
+  background: hsl(var(--primary) / 0.8);
+}
+
+/* Handle Wrapper Base Styles */
+.handle-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.handle-input {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.handle-output {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+/* Base Handle - Simple with small connector */
+.handle-base .handle-connector {
+  flex-shrink: 0;
+}
+
+.handle-base .handle-label {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+/* Labeled Handle - Visible connector with label */
+.handle-labeled .handle-connector {
+  flex-shrink: 0;
+}
+
+.handle-labeled .handle-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+/* Button Handle - Styled like a button */
+.handle-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: hsl(var(--secondary));
+  border: 2px solid hsl(var(--border));
+  transition: all 0.2s;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.handle-button:hover {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--primary));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.handle-button .handle-connector {
+  flex-shrink: 0;
+}
+
+.handle-button .handle-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  user-select: none;
+  flex: 1;
+  text-align: center;
 }

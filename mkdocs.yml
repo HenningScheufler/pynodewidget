@@ -77,6 +77,9 @@ markdown_extensions:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
+extra_css:
+  - stylesheets/extra.css
+
 extra:
   social:
     - icon: fontawesome/brands/github
@@ -105,7 +108,7 @@ nav:
   - Python API Reference:
     - Overview: api/python/index.md
     - NodeFlowWidget: api/python/widget.md
-    - JsonSchemaNodeWidget: api/python/json-schema-node.md
+    - NodeBuilder: api/python/json-schema-node.md
     - Node Builder Utilities: api/python/node-builder.md
     - ObservableDict: api/python/observable-dict.md
     - Protocols: api/python/protocols.md
@@ -113,11 +116,10 @@ nav:
   - Developer Guide:
     - Overview: developer/index.md
     - Architecture: developer/architecture.md
+    - Extension Guide: developer/extending.md
     - JavaScript Development: developer/javascript.md
-    - Field Registry API: developer/field-registry.md
-    - Layout System API: developer/layouts.md
-    - Handle System API: developer/handles.md
     - Hooks API: developer/hooks.md
+    - Handle System API: developer/handles.md
     - Component Library: developer/components.md
     - State Management: developer/state.md
     - TypeScript Types: developer/types.md
@@ -130,5 +132,3 @@ nav:
   - Contributing:
     - Development Setup: contributing/development.md
     - Building from Source: contributing/building.md
-    - Running Tests: contributing/testing.md
-    - Code Style Guide: contributing/code-style.md

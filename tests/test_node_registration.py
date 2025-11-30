@@ -1,21 +1,14 @@
-"""Tests for node registration in NodeFlowWidget."""
+"""Tests for node registration in NodeFlowWidget (v2.0 Simplified API)."""
 
-import pytest
 from pydantic import BaseModel, Field
-from pynodewidget import NodeFlowWidget, JsonSchemaNodeWidget
+from pynodewidget import NodeFlowWidget
 
 
-# Test node classes
+# Test parameter classes
 class SimpleParams(BaseModel):
     """Simple parameters."""
     name: str = Field(default="test")
     value: int = Field(default=42)
-
-
-class SimpleNode(JsonSchemaNodeWidget):
-    """Simple test node."""
-    label = "Simple Node"
-    parameters = SimpleParams
 
 
 class AdvancedParams(BaseModel):
@@ -24,285 +17,262 @@ class AdvancedParams(BaseModel):
     mode: str = Field(default="auto")
 
 
-class AdvancedNode(JsonSchemaNodeWidget):
-    """Advanced test node with all features."""
-    label = "Advanced Node"
-    parameters = AdvancedParams
-    icon = "⚙️"
-    category = "processing"
-    description = "An advanced processing node"
-    inputs = [{"id": "input", "label": "Input"}]
-    outputs = [{"id": "output", "label": "Output"}]
-
-
-class InvalidNode:
-    """Node without required attributes."""
-    pass
-
-
-class TestNodeRegistration:
-    """Test register_node_type() method."""
+class TestLabelInference:
+    """Test automatic label inference from component IDs."""
     
-    def test_register_single_node(self):
-        """Test registering a single node class."""
+    def test_field_label_defaults_to_id(self):
+        """Test that label defaults to id for fields."""
+        from pynodewidget.models import TextField, NumberField, BoolField, SelectField
+        
+        # Labels should default to id
+        text_field = TextField(id="name", value="test")
+        assert text_field.label == "name"
+        
+        number_field = NumberField(id="value", value=42)
+        assert number_field.label == "value"
+        
+        bool_field = BoolField(id="enabled", value=True)
+        assert bool_field.label == "enabled"
+        
+        select_field = SelectField(id="mode", value="auto", options=["auto", "manual"])
+        assert select_field.label == "mode"
+    
+    def test_field_label_with_underscores(self):
+        """Test that underscores in id are preserved in label."""
+        from pynodewidget.models import TextField, NumberField, BoolField
+        
+        text_field = TextField(id="max_value", value="test")
+        assert text_field.label == "max_value"
+        
+        number_field = NumberField(id="min_threshold", value=10)
+        assert number_field.label == "min_threshold"
+        
+        bool_field = BoolField(id="is_enabled", value=True)
+        assert bool_field.label == "is_enabled"
+    
+    def test_field_label_with_camelcase(self):
+        """Test that camelCase in id is preserved in label."""
+        from pynodewidget.models import TextField, NumberField, BoolField
+        
+        text_field = TextField(id="maxValue", value="test")
+        assert text_field.label == "maxValue"
+        
+        number_field = NumberField(id="minThreshold", value=10)
+        assert number_field.label == "minThreshold"
+        
+        bool_field = BoolField(id="isEnabled", value=True)
+        assert bool_field.label == "isEnabled"
+    
+    def test_field_explicit_label_override(self):
+        """Test that explicit labels override the default id."""
+        from pynodewidget.models import TextField, NumberField, BoolField, SelectField
+        
+        text_field = TextField(id="name", label="Custom Label", value="test")
+        assert text_field.label == "Custom Label"
+        
+        number_field = NumberField(id="value", label="Special Value", value=42)
+        assert number_field.label == "Special Value"
+        
+        bool_field = BoolField(id="enabled", label="Is Active", value=True)
+        assert bool_field.label == "Is Active"
+        
+        select_field = SelectField(id="mode", label="Operation Mode", value="auto", options=["auto"])
+        assert select_field.label == "Operation Mode"
+    
+    def test_handle_label_defaults_to_id(self):
+        """Test that label defaults to id for handles."""
+        from pynodewidget.models import BaseHandle, LabeledHandle, ButtonHandle
+        
+        base_handle = BaseHandle(id="input", handle_type="input")
+        assert base_handle.label == "input"
+        
+        labeled_handle = LabeledHandle(id="output", handle_type="output")
+        assert labeled_handle.label == "output"
+        
+        button_handle = ButtonHandle(id="trigger", handle_type="input")
+        assert button_handle.label == "trigger"
+    
+    def test_handle_label_with_underscores(self):
+        """Test that underscores in handle id are preserved in label."""
+        from pynodewidget.models import BaseHandle, LabeledHandle, ButtonHandle
+        
+        base_handle = BaseHandle(id="data_input", handle_type="input")
+        assert base_handle.label == "data_input"
+        
+        labeled_handle = LabeledHandle(id="result_output", handle_type="output")
+        assert labeled_handle.label == "result_output"
+        
+        button_handle = ButtonHandle(id="error_signal", handle_type="output")
+        assert button_handle.label == "error_signal"
+    
+    def test_handle_label_with_camelcase(self):
+        """Test that camelCase in handle id is preserved in label."""
+        from pynodewidget.models import BaseHandle, LabeledHandle, ButtonHandle
+        
+        base_handle = BaseHandle(id="dataInput", handle_type="input")
+        assert base_handle.label == "dataInput"
+        
+        labeled_handle = LabeledHandle(id="resultOutput", handle_type="output")
+        assert labeled_handle.label == "resultOutput"
+        
+        button_handle = ButtonHandle(id="errorSignal", handle_type="output")
+        assert button_handle.label == "errorSignal"
+    
+    def test_handle_explicit_label_override(self):
+        """Test that explicit labels override the default id for handles."""
+        from pynodewidget.models import BaseHandle, LabeledHandle, ButtonHandle
+        
+        base_handle = BaseHandle(id="input", label="Primary Input", handle_type="input")
+        assert base_handle.label == "Primary Input"
+        
+        labeled_handle = LabeledHandle(id="output", label="Main Output", handle_type="output")
+        assert labeled_handle.label == "Main Output"
+        
+        button_handle = ButtonHandle(id="trigger", label="Execute", handle_type="input")
+        assert button_handle.label == "Execute"
+
+
+class TestDuplicateIDValidation:
+    """Test duplicate component ID validation."""
+    
+    def test_duplicate_id_detection(self):
+        """Test that duplicate IDs are detected and raise an error."""
+        from pynodewidget.grid_layouts import create_three_column_grid
+        from pynodewidget.models import TextField, NumberField
+        import pytest
+        
         flow = NodeFlowWidget()
-        flow.register_node_type(SimpleNode)
+        
+        # Create layout with duplicate IDs
+        grid_layout = create_three_column_grid(
+            center_components=[
+                TextField(id="value", value="test1"),
+                NumberField(id="value", value=42)  # Duplicate ID!
+            ]
+        )
+        
+        # Should raise ValueError for duplicate IDs
+        with pytest.raises(ValueError, match="Duplicate component ID.*value"):
+            flow.add_node_type(
+                type_name="test_node",
+                label="Test Node",
+                grid_layout=grid_layout
+            )
+    
+    def test_unique_ids_pass(self):
+        """Test that unique IDs pass validation."""
+        from pynodewidget.grid_layouts import create_three_column_grid
+        from pynodewidget.models import TextField, NumberField
+        
+        flow = NodeFlowWidget()
+        
+        # Create layout with unique IDs
+        grid_layout = create_three_column_grid(
+            center_components=[
+                TextField(id="name", value="test"),
+                NumberField(id="value", value=42)
+            ]
+        )
+        
+        # Should succeed
+        flow.add_node_type(
+            type_name="test_node",
+            label="Test Node",
+            grid_layout=grid_layout
+        )
         
         assert len(flow.node_templates) == 1
-        template = flow.node_templates[0]
-        
-        assert template["type"] == "simple_node"
-        assert template["label"] == "Simple Node"
-        assert "parameters" in template["defaultData"]
     
-    def test_register_node_with_custom_type_name(self):
-        """Test registering with custom type name."""
-        flow = NodeFlowWidget()
-        flow.register_node_type(SimpleNode, type_name="custom_name")
+    def test_duplicate_across_columns(self):
+        """Test duplicate ID detection across different columns."""
+        from pynodewidget.grid_layouts import create_three_column_grid
+        from pynodewidget.models import TextField, LabeledHandle
+        import pytest
         
-        template = flow.node_templates[0]
-        assert template["type"] == "custom_name"
-    
-    def test_register_multiple_nodes(self):
-        """Test registering multiple node classes."""
-        flow = NodeFlowWidget()
-        flow.register_node_type(SimpleNode)
-        flow.register_node_type(AdvancedNode)
-        
-        assert len(flow.node_templates) == 2
-        assert flow.node_templates[0]["type"] == "simple_node"
-        assert flow.node_templates[1]["type"] == "advanced_node"
-    
-    def test_register_node_method_chaining(self):
-        """Test that register_node_type returns self for chaining."""
-        flow = NodeFlowWidget()
-        result = flow.register_node_type(SimpleNode)
-        
-        assert result is flow
-        
-        # Should support chaining with a new flow instance
-        flow2 = NodeFlowWidget()
-        flow2.register_node_type(SimpleNode).register_node_type(AdvancedNode)
-        assert len(flow2.node_templates) == 2
-    
-    def test_register_node_with_all_metadata(self):
-        """Test that all metadata is extracted correctly."""
-        flow = NodeFlowWidget()
-        flow.register_node_type(AdvancedNode)
-        
-        template = flow.node_templates[0]
-        assert template["label"] == "Advanced Node"
-        assert template["icon"] == "⚙️"
-        assert template["category"] == "processing"
-        assert template["description"] == "An advanced processing node"
-        
-        data = template["defaultData"]
-        assert data["inputs"] == [{"id": "input", "label": "Input"}]
-        assert data["outputs"] == [{"id": "output", "label": "Output"}]
-    
-    def test_register_invalid_node_raises_error(self):
-        """Test that registering invalid node raises AttributeError."""
         flow = NodeFlowWidget()
         
-        with pytest.raises(AttributeError) as exc_info:
-            flow.register_node_type(InvalidNode)
+        # Create layout with duplicate IDs across columns
+        grid_layout = create_three_column_grid(
+            left_components=[
+                LabeledHandle(id="input", handle_type="input")
+            ],
+            center_components=[
+                TextField(id="input", value="test")  # Duplicate ID!
+            ]
+        )
         
-        assert "missing required attribute" in str(exc_info.value).lower()
-    
-    def test_schema_generation(self):
-        """Test that JSON schema is generated from Pydantic model."""
-        flow = NodeFlowWidget()
-        flow.register_node_type(AdvancedNode)
-        
-        template = flow.node_templates[0]
-        schema = template["defaultData"]["parameters"]
-        
-        assert "properties" in schema
-        assert "threshold" in schema["properties"]
-        assert "mode" in schema["properties"]
-        
-        # Check constraints are preserved
-        threshold_prop = schema["properties"]["threshold"]
-        assert threshold_prop.get("minimum") == 0
-        assert threshold_prop.get("maximum") == 1
-    
-    def test_camel_case_to_snake_case_conversion(self):
-        """Test that class names are converted to snake_case type names."""
-        class MyComplexNodeName(JsonSchemaNodeWidget):
-            label = "Test"
-            parameters = SimpleParams
-        
-        flow = NodeFlowWidget()
-        flow.register_node_type(MyComplexNodeName)
-        
-        assert flow.node_templates[0]["type"] == "my_complex_node_name"
+        # Should raise ValueError for duplicate IDs
+        with pytest.raises(ValueError, match="Duplicate component ID.*input"):
+            flow.add_node_type(
+                type_name="test_node",
+                label="Test Node",
+                grid_layout=grid_layout
+            )
 
 
-class TestConstructorWithNodes:
-    """Test NodeFlowWidget constructor with nodes parameter."""
+class TestAddNodeTypeFromSchema:
+    """Test add_node_type_from_schema() method (v2.0 still supported)."""
     
-    def test_constructor_with_single_node(self):
-        """Test passing single node to constructor."""
-        flow = NodeFlowWidget(nodes=[SimpleNode])
-        
-        assert len(flow.node_templates) == 1
-        assert flow.node_templates[0]["type"] == "simple_node"
-    
-    def test_constructor_with_multiple_nodes(self):
-        """Test passing multiple nodes to constructor."""
-        flow = NodeFlowWidget(nodes=[SimpleNode, AdvancedNode])
-        
-        assert len(flow.node_templates) == 2
-        assert flow.node_templates[0]["type"] == "simple_node"
-        assert flow.node_templates[1]["type"] == "advanced_node"
-    
-    def test_constructor_with_empty_list(self):
-        """Test passing empty list doesn't cause errors."""
-        flow = NodeFlowWidget(nodes=[])
-        assert len(flow.node_templates) == 0
-    
-    def test_constructor_with_none(self):
-        """Test passing None for nodes parameter."""
-        flow = NodeFlowWidget(nodes=None)
-        assert len(flow.node_templates) == 0
-    
-    def test_constructor_without_nodes_parameter(self):
-        """Test constructor still works without nodes parameter."""
+    def test_add_node_type_basic(self):
+        """Test basic node type registration."""
         flow = NodeFlowWidget()
-        assert len(flow.node_templates) == 0
-    
-    def test_constructor_with_height_and_nodes(self):
-        """Test constructor with both height and nodes."""
-        flow = NodeFlowWidget(nodes=[SimpleNode], height="800px")
-        
-        assert flow.height == "800px"
-        assert len(flow.node_templates) == 1
-    
-    def test_constructor_validates_nodes(self):
-        """Test that constructor validates node classes."""
-        with pytest.raises(AttributeError):
-            NodeFlowWidget(nodes=[InvalidNode])
-
-
-class TestBackwardCompatibility:
-    """Test that legacy methods still work."""
-    
-    def test_add_node_type_from_schema_uses_parameters(self):
-        """Test that legacy method now uses 'parameters' key."""
-        flow = NodeFlowWidget()
-        schema = {
-            "properties": {
-                "x": {"type": "number", "default": 5}
-            }
-        }
+        schema = SimpleParams.model_json_schema()
         
         flow.add_node_type_from_schema(
             schema,
             type_name="test_node",
-            label="Test"
-        )
-        
-        template = flow.node_templates[0]
-        # Should use 'parameters' not 'schema'
-        assert "parameters" in template["defaultData"]
-        assert "schema" not in template["defaultData"]
-    
-    def test_add_node_type_from_pydantic_still_works(self):
-        """Test that legacy Pydantic method still works."""
-        flow = NodeFlowWidget()
-        
-        flow.add_node_type_from_pydantic(
-            SimpleParams,
-            type_name="legacy_node",
-            label="Legacy Node",
-            icon="🔧"
+            label="Test Node"
         )
         
         assert len(flow.node_templates) == 1
         template = flow.node_templates[0]
-        assert template["type"] == "legacy_node"
-        assert template["label"] == "Legacy Node"
+        
+        assert template["type"] == "test_node"
+        assert template["label"] == "Test Node"
+        assert "grid" in template["definition"]
+        assert "cells" in template["definition"]["grid"]
     
-    def test_mix_new_and_legacy_methods(self):
-        """Test mixing new and legacy registration methods."""
+    def test_add_node_type_with_metadata(self):
+        """Test adding node with full metadata."""
         flow = NodeFlowWidget()
+        schema = AdvancedParams.model_json_schema()
         
-        # New method
-        flow.register_node_type(SimpleNode)
-        
-        # Legacy method
-        flow.add_node_type_from_pydantic(
-            SimpleParams,
-            type_name="legacy",
-            label="Legacy"
+        flow.add_node_type_from_schema(
+            schema,
+            type_name="advanced_node",
+            label="Advanced Node",
+            description="An advanced node",
+            icon="⚙️"
         )
         
-        assert len(flow.node_templates) == 2
-
-
-class TestTypedHandles:
-    """Test nodes with Pydantic-based handle definitions."""
+        template = flow.node_templates[0]
+        assert template["label"] == "Advanced Node"
+        assert template["icon"] == "⚙️"
+        assert template["description"] == "An advanced node"
     
-    def test_pydantic_inputs_converted(self):
-        """Test Pydantic input models are converted to handle configs."""
-        class InputHandles(BaseModel):
-            data: str = Field(description="Data input")
-            config: str = Field(description="Config input")
+    def test_add_node_type_method_chaining(self):
+        """Test that method returns self for chaining."""
+        flow = NodeFlowWidget()
+        result = flow.add_node_type_from_schema(
+            SimpleParams.model_json_schema(),
+            type_name="node1",
+            label="Node 1"
+        )
         
-        class NodeWithTypedInputs(JsonSchemaNodeWidget):
-            label = "Typed Inputs"
-            parameters = SimpleParams
-            inputs = InputHandles
+        assert result is flow
+    
+    def test_default_values_extracted(self):
+        """Test that default values are extracted from schema."""
+        flow = NodeFlowWidget()
+        schema = SimpleParams.model_json_schema()
         
-        flow = NodeFlowWidget(nodes=[NodeWithTypedInputs])
+        flow.add_node_type_from_schema(
+            schema,
+            type_name="test",
+            label="Test"
+        )
         
         template = flow.node_templates[0]
-        inputs = template["defaultData"]["inputs"]
-        
-        assert len(inputs) == 2
-        assert inputs[0]["id"] == "data"
-        assert inputs[1]["id"] == "config"
-    
-    def test_pydantic_outputs_converted(self):
-        """Test Pydantic output models are converted to handle configs."""
-        class OutputHandles(BaseModel):
-            result: str = Field(description="Result output")
-            status: str = Field(description="Status output")
-        
-        class NodeWithTypedOutputs(JsonSchemaNodeWidget):
-            label = "Typed Outputs"
-            parameters = SimpleParams
-            outputs = OutputHandles
-        
-        flow = NodeFlowWidget(nodes=[NodeWithTypedOutputs])
-        
-        template = flow.node_templates[0]
-        outputs = template["defaultData"]["outputs"]
-        
-        assert len(outputs) == 2
-        assert outputs[0]["id"] == "result"
-        assert outputs[1]["id"] == "status"
-
-
-class TestDefaultValues:
-    """Test that default values are handled correctly."""
-    
-    def test_empty_values_dict(self):
-        """Test that values dict is empty (defaults come from schema)."""
-        flow = NodeFlowWidget(nodes=[SimpleNode])
-        
-        template = flow.node_templates[0]
-        values = template["defaultData"]["values"]
-        
-        # Values should be empty - defaults are in the schema itself
-        assert values == {}
-    
-    def test_schema_contains_defaults(self):
-        """Test that defaults are in the schema properties."""
-        flow = NodeFlowWidget(nodes=[SimpleNode])
-        
-        template = flow.node_templates[0]
-        schema = template["defaultData"]["parameters"]
-        
-        assert schema["properties"]["name"]["default"] == "test"
-        assert schema["properties"]["value"]["default"] == 42
+        assert "defaultValues" in template
+        assert template["defaultValues"]["name"] == "test"
+        assert template["defaultValues"]["value"] == 42

@@ -1,53 +1,46 @@
 import { describe, it, expect } from 'vitest';
 import { NodeComponentBuilder, buildNodeTypes } from '../../src/utils/NodeComponentBuilder';
-import type { CustomNodeData, NodeTemplate } from '../../src/types/schema';
+import type { NodeTemplate, NodeGrid } from '../../src/types/schema';
 
 describe('NodeComponentBuilder', () => {
-  const createMinimalSchema = (): CustomNodeData => ({
-    label: 'Test Node',
-    layoutType: 'horizontal',
-    values: {},
+  const createMinimalGrid = (): NodeGrid => ({
+    rows: ['1fr'],
+    columns: ['1fr'],
+    cells: []
   });
 
   describe('constructor', () => {
     it('should create a builder instance with valid schema', () => {
-      const schema = createMinimalSchema();
-      const builder = new NodeComponentBuilder(schema);
+      const grid = createMinimalGrid();
+      const builder = new NodeComponentBuilder(grid);
 
       expect(builder).toBeInstanceOf(NodeComponentBuilder);
     });
 
-    it('should handle invalid layoutType gracefully', () => {
-      const schema: CustomNodeData = {
-        label: 'Test',
-        layoutType: 'nonexistent-layout',
-        values: {},
-      };
+    it('should require grid', () => {
+      const grid = null as any; // Intentionally null to test error
 
-      // The implementation doesn't throw but uses a fallback layout
-      const builder = new NodeComponentBuilder(schema);
-      expect(builder).toBeInstanceOf(NodeComponentBuilder);
+      // Should throw because grid is required
+      expect(() => new NodeComponentBuilder(grid)).toThrow("'grid' property is required in node definition.");
     });
 
-    it('should accept valid layout types', () => {
-      const layouts = ['horizontal', 'vertical', 'compact'];
+    it('should accept different grid layout types', () => {
+      const layouts = [
+        { rows: ['1fr'], columns: ['1fr'], cells: [] },
+        { rows: ['1fr', '1fr'], columns: ['1fr'], cells: [] },
+        { rows: ['auto', 'auto'], columns: ['1fr', '1fr'], cells: [] },
+      ];
 
-      layouts.forEach((layoutType) => {
-        const schema: CustomNodeData = {
-          label: 'Test',
-          layoutType,
-          values: {},
-        };
-
-        expect(() => new NodeComponentBuilder(schema)).not.toThrow();
+      layouts.forEach((grid) => {
+        expect(() => new NodeComponentBuilder(grid)).not.toThrow();
       });
     });
   });
 
   describe('buildComponent', () => {
     it('should build a React component', () => {
-      const schema = createMinimalSchema();
-      const builder = new NodeComponentBuilder(schema);
+      const grid = createMinimalGrid();
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       // React.memo returns an object (React component), not a plain function
@@ -55,46 +48,10 @@ describe('NodeComponentBuilder', () => {
       expect(typeof Component).toBe('object');
     });
 
-    it('should build component with header configuration', () => {
-      const schema: CustomNodeData = {
-        label: 'Header Test',
-        layoutType: 'horizontal',
-        header: {
-          show: true,
-          icon: '⚙️',
-          className: 'custom-header',
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
-    it('should build component with footer configuration', () => {
-      const schema: CustomNodeData = {
-        label: 'Footer Test',
-        layoutType: 'horizontal',
-        footer: {
-          show: true,
-          text: 'Status: Ready',
-          className: 'custom-footer',
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
     it('should build component with style configuration', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Style Test',
-        layoutType: 'horizontal',
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         style: {
           minWidth: '300px',
           maxWidth: '600px',
@@ -104,16 +61,16 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with numeric width values', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Numeric Width',
-        layoutType: 'horizontal',
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         style: {
           minWidth: 200,
           maxWidth: 400,
@@ -121,7 +78,7 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
@@ -131,14 +88,14 @@ describe('NodeComponentBuilder', () => {
       const handleTypes: Array<'base' | 'button' | 'labeled'> = ['base', 'button', 'labeled'];
 
       handleTypes.forEach((handleType) => {
-        const schema: CustomNodeData = {
+        const grid: NodeGrid = {
           label: 'Handle Test',
-          layoutType: 'horizontal',
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           handleType,
           values: {},
         };
 
-        const builder = new NodeComponentBuilder(schema);
+        const builder = new NodeComponentBuilder(grid);
         const Component = builder.buildComponent();
 
         expect(Component).toBeDefined();
@@ -146,25 +103,25 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('should build component with input and output handle types', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Handle Test',
-        layoutType: 'horizontal',
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         handleType: 'base',
         inputHandleType: 'button',
         outputHandleType: 'labeled',
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with inputs and outputs', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Handles Test',
-        layoutType: 'horizontal',
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         inputs: [
           { id: 'input1', label: 'Input 1', handle_type: 'base' },
           { id: 'input2', label: 'Input 2', handle_type: 'button' },
@@ -175,16 +132,16 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with validation config', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Validation Test',
-        layoutType: 'horizontal',
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         validation: {
           showErrors: true,
           errorPosition: 'inline',
@@ -193,16 +150,16 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
     });
 
     it('should build component with field configurations', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Field Config Test',
-        layoutType: 'horizontal',
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         fieldConfigs: {
           field1: { hidden: true },
           field2: { disabled: true },
@@ -211,7 +168,7 @@ describe('NodeComponentBuilder', () => {
         values: {},
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
@@ -227,14 +184,14 @@ describe('NodeComponentBuilder', () => {
       ];
 
       shadows.forEach((shadow) => {
-        const schema: CustomNodeData = {
+        const grid: NodeGrid = {
           label: 'Shadow Test',
-          layoutType: 'horizontal',
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           style: { shadow },
           values: {},
         };
 
-        const builder = new NodeComponentBuilder(schema);
+        const builder = new NodeComponentBuilder(grid);
         const Component = builder.buildComponent();
 
         expect(Component).toBeDefined();
@@ -242,24 +199,12 @@ describe('NodeComponentBuilder', () => {
     });
 
     it('should build component with complex configuration', () => {
-      const schema: CustomNodeData = {
+      const grid: NodeGrid = {
         label: 'Complex Node',
-        layoutType: 'vertical',
+        grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         handleType: 'button',
         inputHandleType: 'labeled',
         outputHandleType: 'base',
-        header: {
-          show: true,
-          icon: '🔧',
-          className: 'bg-blue-600',
-          bgColor: '#0066cc',
-          textColor: '#ffffff',
-        },
-        footer: {
-          show: true,
-          text: 'Processing...',
-          className: 'bg-gray-100',
-        },
         style: {
           minWidth: '250px',
           maxWidth: '500px',
@@ -296,7 +241,7 @@ describe('NodeComponentBuilder', () => {
         },
       };
 
-      const builder = new NodeComponentBuilder(schema);
+      const builder = new NodeComponentBuilder(grid);
       const Component = builder.buildComponent();
 
       expect(Component).toBeDefined();
@@ -305,69 +250,20 @@ describe('NodeComponentBuilder', () => {
 
   describe('static buildComponent', () => {
     it('should build component directly from schema', () => {
-      const schema = createMinimalSchema();
+      const schema = createMinimalGrid();
       const Component = NodeComponentBuilder.buildComponent(schema);
 
       expect(Component).toBeDefined();
     });
 
     it('should produce same result as instance method', () => {
-      const schema = createMinimalSchema();
+      const grid = createMinimalGrid();
       
-      const Component1 = NodeComponentBuilder.buildComponent(schema);
-      const builder = new NodeComponentBuilder(schema);
+      const Component1 = NodeComponentBuilder.buildComponent(grid);
+      const builder = new NodeComponentBuilder(grid);
       const Component2 = builder.buildComponent();
 
       expect(typeof Component1).toBe(typeof Component2);
-    });
-  });
-
-  describe('header behavior', () => {
-    it('should show header by default when not specified', () => {
-      const schema: CustomNodeData = {
-        label: 'Test',
-        layoutType: 'horizontal',
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
-    it('should use icon from header config over root icon', () => {
-      const schema: CustomNodeData = {
-        label: 'Test',
-        layoutType: 'horizontal',
-        icon: '⚙️',
-        header: {
-          icon: '🔧',
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
-    });
-
-    it('should fallback to root icon if header icon not specified', () => {
-      const schema: CustomNodeData = {
-        label: 'Test',
-        layoutType: 'horizontal',
-        icon: '⚙️',
-        header: {
-          show: true,
-        },
-        values: {},
-      };
-
-      const builder = new NodeComponentBuilder(schema);
-      const Component = builder.buildComponent();
-
-      expect(Component).toBeDefined();
     });
   });
 });
@@ -376,11 +272,10 @@ describe('buildNodeTypes', () => {
   const createTemplate = (type: string, label: string): NodeTemplate => ({
     type,
     label,
-    defaultData: {
-      label,
-      layoutType: 'horizontal',
-      values: {},
+    definition: {
+      grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
     },
+    defaultValues: {},
   });
 
   it('should build node types from templates', () => {
@@ -422,29 +317,14 @@ describe('buildNodeTypes', () => {
         label: 'Advanced Node',
         description: 'An advanced node',
         icon: '🚀',
-        defaultData: {
-          label: 'Advanced',
-          layoutType: 'vertical',
-          handleType: 'button',
-          header: {
-            show: true,
-            icon: '🚀',
-            className: 'bg-purple-600',
-          },
-          footer: {
-            show: true,
-            text: 'Advanced mode',
-          },
+        definition: {
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
           style: {
             minWidth: '300px',
             shadow: 'xl',
           },
-          validation: {
-            showErrors: true,
-            errorPosition: 'inline',
-          },
-          values: {},
         },
+        defaultValues: {},
       },
     ];
 
@@ -458,17 +338,15 @@ describe('buildNodeTypes', () => {
       {
         type: 'invalid',
         label: 'Invalid',
-        defaultData: {
-          label: 'Invalid',
-          layoutType: 'nonexistent-layout',
-          values: {},
+        definition: {
+          grid: null as any, // Intentionally invalid to test error handling
         },
+        defaultValues: {},
       },
     ];
 
-    // Layout validation doesn't throw - it uses fallback
-    const nodeTypes = buildNodeTypes(templates);
-    expect(nodeTypes.invalid).toBeDefined();
+    // Should throw because grid is required
+    expect(() => buildNodeTypes(templates)).toThrow("'grid' property is required in node definition.");
   });
 
   it('should handle templates with all layout types', () => {
@@ -476,11 +354,11 @@ describe('buildNodeTypes', () => {
       createTemplate('horizontal', 'Horizontal'),
       {
         ...createTemplate('vertical', 'Vertical'),
-        defaultData: { ...createTemplate('vertical', 'Vertical').defaultData, layoutType: 'vertical' },
+        definition: { grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
       },
       {
         ...createTemplate('compact', 'Compact'),
-        defaultData: { ...createTemplate('compact', 'Compact').defaultData, layoutType: 'compact' },
+        definition: { grid: { rows: ["1fr"], columns: ["1fr"], cells: [] } },
       },
     ];
 
@@ -497,32 +375,26 @@ describe('buildNodeTypes', () => {
       {
         type: 'base-handles',
         label: 'Base',
-        defaultData: {
-          label: 'Base',
-          layoutType: 'horizontal',
-          handleType: 'base',
-          values: {},
+        definition: {
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         },
+        defaultValues: {},
       },
       {
         type: 'button-handles',
         label: 'Button',
-        defaultData: {
-          label: 'Button',
-          layoutType: 'horizontal',
-          handleType: 'button',
-          values: {},
+        definition: {
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         },
+        defaultValues: {},
       },
       {
         type: 'labeled-handles',
         label: 'Labeled',
-        defaultData: {
-          label: 'Labeled',
-          layoutType: 'horizontal',
-          handleType: 'labeled',
-          values: {},
+        definition: {
+          grid: { rows: ["1fr"], columns: ["1fr"], cells: [] },
         },
+        defaultValues: {},
       },
     ];
 

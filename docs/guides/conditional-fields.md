@@ -563,123 +563,19 @@ flow.add_node_type_from_schema(
 
 ## Best Practices
 
-### 1. Clear Triggers
-
-Use descriptive field names for triggers:
-
-```python
-# ❌ Unclear
-create_conditional_field("opt1", True)
-
-# ✅ Clear
-create_conditional_field("enable_advanced_mode", True)
-```
-
-### 2. Logical Grouping
-
-Group related conditional fields:
-
-```python
-# Advanced database options
-make_fields_conditional(
-    trigger_field="use_advanced_db_config",
-    trigger_value=True,
-    dependent_fields=[
-        "connection_pool_size",
-        "query_timeout",
-        "enable_prepared_statements",
-        "cache_size"
-    ]
-)
-```
-
-### 3. Sensible Defaults
-
-Provide good defaults for conditional fields:
-
-```python
-fields={
-    "enable_caching": {"type": "boolean", "default": False},
-    # Good default even though field is hidden initially
-    "cache_ttl": {"type": "integer", "default": 3600, "title": "Cache TTL"}
-}
-```
-
-### 4. Avoid Deep Nesting
-
-Limit conditional chains to 2-3 levels:
-
-```python
-# ❌ Too deep (4 levels)
-"option_d": depends on "option_c"
-"option_c": depends on "option_b"
-"option_b": depends on "option_a"
-
-# ✅ Reasonable (2 levels)
-"advanced_option": depends on "mode"
-"mode": depends on "enable_advanced"
-```
-
-### 5. Document Dependencies
-
-Comment conditional relationships:
-
-```python
-config["field_configs"] = {
-    # Show authentication fields only for remote sources
-    "auth_method": create_conditional_field("source_type", "remote"),
-    
-    # Show credentials based on selected auth method
-    "api_key": create_conditional_field("auth_method", "api_key"),
-    "username": create_conditional_field("auth_method", "basic"),
-    "password": create_conditional_field("auth_method", "basic")
-}
-```
+- **Clear triggers**: Use descriptive field names
+- **Logical grouping**: Group related conditional fields
+- **Sensible defaults**: Provide good defaults even for hidden fields
+- **Avoid deep nesting**: Limit chains to 2-3 levels
+- **Document dependencies**: Comment conditional relationships
 
 ## Troubleshooting
 
-### Fields Not Showing/Hiding
+**Fields not showing/hiding**: Check trigger field name matches exactly.
 
-Check trigger field name:
+**Condition not evaluating**: Verify operator matches value type (e.g., use `"equals"` for booleans, not `"contains"`).
 
-```python
-# ❌ Typo in field name
-create_conditional_field("enable_auth", True)  # Field is actually "use_auth"
-
-# ✅ Correct field name
-create_conditional_field("use_auth", True)
-```
-
-### Condition Not Evaluating
-
-Verify operator and value types:
-
-```python
-# ❌ Wrong operator for boolean
-create_conditional_field("enabled", True, operator="contains")
-
-# ✅ Correct operator
-create_conditional_field("enabled", True, operator="equals")
-
-# ❌ Type mismatch
-create_conditional_field("count", "10")  # count is integer
-
-# ✅ Correct type
-create_conditional_field("count", 10)
-```
-
-### Complex Conditions Not Working
-
-Break into simpler conditions:
-
-```python
-# ❌ Trying to express: show if A and B
-# (not directly supported)
-
-# ✅ Use chaining instead
-"field_c": depends on "field_b"
-"field_b": depends on "field_a"
-```
+**Complex conditions not working**: Break into simpler chained conditions.
 
 ## Next Steps
 

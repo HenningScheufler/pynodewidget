@@ -24,19 +24,26 @@ class HandleSpec(BaseModel):
 class NodeFactory(Protocol):
     """Protocol defining the interface for node type definitions.
     
+    DEPRECATION WARNING: The 'parameters' attribute is deprecated.
+    Instead, define nodes using the grid-based architecture:
+    - grid_layout: Dict defining NodeGrid → GridCell → Components structure
+    - Use HandleComponent (BaseHandle, ButtonHandle, LabeledHandle) for inputs/outputs
+    - Use FieldComponent (TextField, NumberField, etc.) for configuration fields
+    
     Any class implementing this protocol can be registered with NodeFlowWidget
     to create custom node types in the visual editor.
     
     Required Attributes:
         label (str): Display name for the node shown in UI
-        parameters (Type[BaseModel]): Pydantic model defining node configuration fields
+        parameters (Type[BaseModel]): DEPRECATED - Use grid_layout instead
     
     Optional Attributes:
         icon (str): Unicode emoji or icon identifier (default: "")
         category (str): Category for grouping nodes in UI (default: "general")
         description (str): Help text shown to users (default: "")
-        inputs (Type[BaseModel] | List[Dict[str, str]]): Input handle definitions (default: [])
-        outputs (Type[BaseModel] | List[Dict[str, str]]): Output handle definitions (default: [])
+        inputs (List[Dict[str, str]]): DEPRECATED - Define in grid_layout instead
+        outputs (List[Dict[str, str]]): DEPRECATED - Define in grid_layout instead
+        grid_layout (Dict[str, Any]): Grid layout configuration (RECOMMENDED)
     
     Required Methods:
         __init__: Initialize node instance with optional initial values
@@ -47,7 +54,7 @@ class NodeFactory(Protocol):
         validate: Validate current configuration, returns True if valid
         execute: Execute node logic (for future execution engine)
     
-    Example:
+    Example (deprecated approach):
         >>> from pydantic import BaseModel
         >>> 
         >>> class ProcessingConfig(BaseModel):
@@ -58,15 +65,19 @@ class NodeFactory(Protocol):
         ...     label = "Image Processor"
         ...     parameters = ProcessingConfig
         ...     icon = "🖼️"
-        ...     
-        ...     def __init__(self, **initial_values):
-        ...         self.config = self.parameters(**initial_values)
-        ...     
-        ...     def get_values(self) -> Dict[str, Any]:
-        ...         return self.config.model_dump()
-        ...     
-        ...     def set_values(self, values: Dict[str, Any]) -> None:
-        ...         self.config = self.parameters(**values)
+        
+    Example (recommended grid-based approach):
+        >>> from pynodewidget.grid_layouts import create_three_column_grid
+        >>> from pynodewidget.models import ButtonHandle, TextField
+        >>> 
+        >>> class ImageProcessor:
+        ...     label = "Image Processor"
+        ...     icon = "🖼️"
+        ...     grid_layout = create_three_column_grid(
+        ...         left_components=[ButtonHandle(id="in", label="Input", handle_type="input")],
+        ...         center_components=[TextField(id="mode", label="Mode", value="auto")],
+        ...         right_components=[ButtonHandle(id="out", label="Output", handle_type="output")]
+        ...     )
     """
     
     # Required class attributes
@@ -77,10 +88,7 @@ class NodeFactory(Protocol):
     icon: str
     category: str
     description: str
-    inputs: Union[Type[BaseModel], List[Dict[str, str]], List[HandleSpec]]
-    outputs: Union[Type[BaseModel], List[Dict[str, str]], List[HandleSpec]]
-    layout_type: str
-    handle_type: str
+    grid_layout: Optional[Dict[str, Any]]
     
     def __init__(self, **initial_values: Any) -> None:
         """Initialize node instance with optional initial values.
@@ -143,10 +151,7 @@ class NodeMetadata:
         icon: str = "",
         category: str = "general",
         description: str = "",
-        inputs: List[Dict[str, str]] = None,
-        outputs: List[Dict[str, str]] = None,
-        layout_type: str = "horizontal",
-        handle_type: str = "base",
+        grid_layout: Optional[Dict[str, Any]] = None,
     ):
         """Initialize node metadata.
         
@@ -157,10 +162,7 @@ class NodeMetadata:
             icon: Unicode emoji or icon identifier
             category: Category for grouping nodes
             description: Help text
-            inputs: List of input handle configurations
-            outputs: List of output handle configurations
-            layout_type: Layout style for the node (e.g., "horizontal", "vertical")
-            handle_type: Default handle type for all handles (e.g., "base", "button", "labeled")
+            grid_layout: Grid layout configuration
         """
         self.type_name = type_name
         self.label = label
@@ -168,10 +170,7 @@ class NodeMetadata:
         self.icon = icon
         self.category = category
         self.description = description
-        self.inputs = inputs or []
-        self.outputs = outputs or []
-        self.layout_type = layout_type
-        self.handle_type = handle_type
+        self.grid_layout = grid_layout
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert metadata to dictionary for JSON serialization.
@@ -179,22 +178,47 @@ class NodeMetadata:
         Returns:
             Dictionary representation of node metadata
         """
-        return {
-            "type": self.type_name,
-            "label": self.label,
-            "icon": self.icon,
-            "category": self.category,
-            "description": self.description,
-            "defaultData": {
-                "label": self.label,
-                "parameters": self.parameters_schema,
-                "inputs": self.inputs,
-                "outputs": self.outputs,
-                "layoutType": self.layout_type,
-                "handleType": self.handle_type,
-                "values": {},
-            }
+        from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
+        from .models import NodeDefinition, NodeTemplate
+        
+        # Get grid layout if specified, otherwise create default vertical grid
+        grid = self.grid_layout
+        if grid is None:
+            # Generate default grid with JSON schema fields
+            field_components = json_schema_to_components(self.parameters_schema, {})
+            grid = create_vertical_stack_grid(middle_components=field_components)
+        
+        # Extract default values from schema
+        default_values = {}
+        if "properties" in self.parameters_schema:
+            for key, prop in self.parameters_schema["properties"].items():
+                if "default" in prop:
+                    default_values[key] = prop["default"]
+        
+        # Build NodeDefinition (visual structure only)
+        definition_dict = {
+            "grid": grid,
         }
+        
+        try:
+            # Validate the definition structure
+            definition = NodeDefinition(**definition_dict)
+            
+            # Create and validate the full template
+            template_dict = {
+                "type": self.type_name,
+                "label": self.label,
+                "icon": self.icon,
+                "category": self.category,
+                "description": self.description,
+                "definition": definition.model_dump(),
+                "defaultValues": default_values
+            }
+            template = NodeTemplate(**template_dict)
+            
+            return template.model_dump()
+        except Exception as e:
+            raise ValueError(f"Failed to create valid node template from metadata: {e}")
     
     @classmethod
     def from_node_class(cls, node_class: Type[NodeFactory], type_name: Optional[str] = None) -> "NodeMetadata":
@@ -233,16 +257,7 @@ class NodeMetadata:
         icon = getattr(node_class, 'icon', '')
         category = getattr(node_class, 'category', 'general')
         description = getattr(node_class, 'description', '')
-        inputs = getattr(node_class, 'inputs', [])
-        outputs = getattr(node_class, 'outputs', [])
-        layout_type = getattr(node_class, 'layout_type', 'horizontal')
-        handle_type = getattr(node_class, 'handle_type', 'base')
-        
-        # Convert Pydantic models for inputs/outputs to handle configs
-        if isinstance(inputs, type) and issubclass(inputs, BaseModel):
-            inputs = cls._pydantic_to_handles(inputs)
-        if isinstance(outputs, type) and issubclass(outputs, BaseModel):
-            outputs = cls._pydantic_to_handles(outputs)
+        grid_layout = getattr(node_class, 'grid_layout', None)
         
         # Use class name as type_name if not provided
         if type_name is None:
@@ -255,31 +270,5 @@ class NodeMetadata:
             icon=icon,
             category=category,
             description=description,
-            inputs=inputs,
-            outputs=outputs,
-            layout_type=layout_type,
-            handle_type=handle_type,
+            grid_layout=grid_layout,
         )
-    
-    @staticmethod
-    def _pydantic_to_handles(model: Type[BaseModel]) -> List[Dict[str, str]]:
-        """Convert a Pydantic model to handle configurations.
-        
-        Args:
-            model: Pydantic BaseModel defining handles
-            
-        Returns:
-            List of handle configuration dictionaries
-        """
-        handles = []
-        for field_name, field_info in model.model_fields.items():
-            handle_config = {
-                "id": field_name,
-                "label": field_info.title or field_name.replace("_", " ").title(),
-            }
-            # Check if field has handle_type in metadata
-            if hasattr(field_info, 'json_schema_extra') and field_info.json_schema_extra:
-                if isinstance(field_info.json_schema_extra, dict) and 'handle_type' in field_info.json_schema_extra:
-                    handle_config["handle_type"] = field_info.json_schema_extra['handle_type']
-            handles.append(handle_config)
-        return handles

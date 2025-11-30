@@ -31,15 +31,7 @@ def _(NodeFlowWidget, mo):
                 },
         type_name="my_node",
         label="My Node",
-        icon="⚙️",
-        inputs=[
-            {"id": "input1", "label": "First Input"},
-            {"id": "input2", "label": "Second Input"}
-        ],
-        outputs=[
-            {"id": "output1", "label": "Result"},
-            {"id": "output2", "label": "Stats"}
-        ]
+        icon="⚙️"
     )
     w1 = mo.ui.anywidget(w1)
     w1

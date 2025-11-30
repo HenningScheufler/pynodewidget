@@ -3,9 +3,65 @@
 import pathlib
 import anywidget
 import traitlets as t
-from typing import List, Dict, Any, Optional, Type
+from typing import List, Dict, Any, Optional, Type, Set
 import json
 from .observable_dict import ObservableDict, ObservableDictTrait
+
+
+def _to_plain_dict(obj):
+    """Recursively convert ObservableDict to plain dict for serialization."""
+    if isinstance(obj, (ObservableDict, dict)):
+        return {k: _to_plain_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_to_plain_dict(item) for item in obj]
+    else:
+        return obj
+
+
+def _validate_unique_component_ids(grid_layout: Dict[str, Any]) -> None:
+    """Validate that all component IDs in a grid layout are unique.
+    
+    Recursively traverses the grid layout structure to find all components,
+    including nested grid layouts, and ensures no duplicate IDs exist.
+    
+    Args:
+        grid_layout: Grid layout configuration dict
+        
+    Raises:
+        ValueError: If duplicate component IDs are found
+    """
+    def collect_ids(layout_dict: Dict[str, Any], ids: Set[str]) -> None:
+        """Recursively collect all component IDs from layout."""
+        if not isinstance(layout_dict, dict):
+            return
+            
+        # Check if this is a grid layout with cells
+        if "cells" in layout_dict:
+            for cell in layout_dict.get("cells", []):
+                if not isinstance(cell, dict):
+                    continue
+                    
+                # Process components in the cell
+                for component in cell.get("components", []):
+                    if not isinstance(component, dict):
+                        continue
+                    
+                    # Check if component has an ID
+                    if "id" in component:
+                        comp_id = component["id"]
+                        if comp_id in ids:
+                            raise ValueError(
+                                f"Duplicate component ID found: '{comp_id}'. "
+                                f"All component IDs within a node must be unique."
+                            )
+                        ids.add(comp_id)
+                    
+                    # If this is a nested grid layout, recurse
+                    if component.get("type") == "grid-layout":
+                        collect_ids(component, ids)
+    
+    ids: Set[str] = set()
+    collect_ids(grid_layout, ids)
 
 
 class NodeFlowWidget(anywidget.AnyWidget):
@@ -31,10 +87,12 @@ class NodeFlowWidget(anywidget.AnyWidget):
     _esm = pathlib.Path(__file__).parent / "static" / "index.js"
     _css = pathlib.Path(__file__).parent / "static" / "index.css"
     
-    # Graph data
-    nodes = t.List(trait=t.Dict()).tag(sync=True)
-    edges = t.List(trait=t.Dict()).tag(sync=True)
+    # defines the available node types/templates
     node_templates = t.List(trait=t.Dict()).tag(sync=True)
+
+    # Graph data - nodes as dict keyed by ID for efficient per-node updates
+    nodes = t.Dict(trait=t.Dict()).tag(sync=True)
+    edges = t.List(trait=t.Dict()).tag(sync=True)
     
     # Track node values separately for efficient sync - keyed by node ID
     # Using ObservableDictTrait for automatic sync on mutations
@@ -47,130 +105,134 @@ class NodeFlowWidget(anywidget.AnyWidget):
     fit_view = t.Bool(default_value=True).tag(sync=True)
     height = t.Unicode(default_value="600px").tag(sync=True)
     
-    def update_node_value(self, node_id: str, key: str, value: any) -> None:
-        """Update a specific value for a node. Auto-syncs to frontend.
-        
-        Args:
-            node_id: ID of the node to update
-            key: Key within the node's values dict
-            value: New value to set
-            
-        Example:
-            >>> flow.update_node_value("processor-1", "workers", 20)
-        """
-        if node_id not in self.node_values:
-            self.node_values[node_id] = {}
-        self.node_values[node_id][key] = value
+    # Image export trigger (Python -> JS communication) - List to support rapid successive exports
+    _export_image_trigger = t.List(trait=t.Dict()).tag(sync=True)
+    # Image export data (JS -> Python communication, base64 encoded)
+    _export_image_data = t.Unicode(default_value="").tag(sync=True)
     
-    def get_node_values(self, node_id: str) -> Dict[str, Any]:
-        """Get all values for a specific node.
+    @property
+    def values(self) -> ObservableDict:
+        """Direct dict-like access to node values (v2.0 simplified API).
         
-        Args:
-            node_id: ID of the node
-            
+        Provides Pythonic access without wrapper methods.
+        
+        Examples:
+            >>> # Set single value
+            >>> widget.values["processor-1"]["threshold"] = 0.8
+            >>> 
+            >>> # Set multiple values
+            >>> widget.values["processor-1"] = {"threshold": 0.8, "enabled": True}
+            >>> 
+            >>> # Get single value
+            >>> value = widget.values["processor-1"].get("threshold", 0.5)
+            >>> 
+            >>> # Get all values for a node
+            >>> all_values = widget.values["processor-1"]
+        """
+        return self.node_values
+    
+    @property
+    def templates(self) -> List[Dict[str, Any]]:
+        """Alias for node_templates (v2.0 simplified API).
+        
         Returns:
-            Dictionary of values for the node, or empty dict if not found
+            List of registered node type definitions.
             
         Example:
-            >>> values = flow.get_node_values("processor-1")
-            >>> workers = values.get("workers", 4)
+            >>> for template in widget.templates:
+            ...     print(template['label'])
         """
-        return self.node_values.get(node_id, {})
+        return self.node_templates
     
-    def set_node_values(self, node_id: str, values: Dict[str, Any]) -> None:
-        """Set multiple values for a node at once. Auto-syncs to frontend.
-        
-        Args:
-            node_id: ID of the node
-            values: Dictionary of values to set
-            
-        Example:
-            >>> flow.set_node_values("processor-1", {"workers": 8, "progress": 50})
-        """
-        if node_id not in self.node_values:
-            self.node_values[node_id] = {}
-        self.node_values[node_id].update(values)
-    
-    def get_node_value(self, node_id: str, key: str, default: Any = None) -> Any:
-        """Get a specific value from a node.
-        
-        Args:
-            node_id: ID of the node
-            key: Key of the value to get
-            default: Default value if not found
-            
-        Returns:
-            The value, or default if not found
-            
-        Example:
-            >>> workers = flow.get_node_value("processor-1", "workers", 4)
-        """
-        values = self.get_node_values(node_id)
-        return values.get(key, default)
-    
-    def __init__(self, nodes: Optional[List[Type]] = None, height: str = "600px", **kwargs):
+    def __init__(self, height: str = "600px", **kwargs: Any) -> None:
         """Initialize the NodeFlowWidget.
         
         Args:
-            nodes: Optional list of node classes implementing NodeFactory protocol.
-                   Each class will be validated and registered automatically.
             height: Height of the widget canvas (default: "600px")
             **kwargs: Additional widget configuration options
         """
         super().__init__(**kwargs)
         self.height = height
+        self._export_id = 0
+        self._pending_exports = {}  # Maps export_id -> filename
         
-        # node_values is automatically an ObservableDict via ObservableDictTrait
-        # No need to manually wrap - the trait handles it
-        
-        # Register node classes if provided
-        if nodes:
-            for node_class in nodes:
-                self.register_node_type(node_class)
+        # Set up persistent observer for image data
+        self.observe(self._on_image_data_received, names=['_export_image_data'])
     
-    def register_node_type(
+    def add_node_type(
         self,
-        node_class: Type,
-        type_name: Optional[str] = None
+        type_name: str,
+        label: str,
+        grid_layout: Any,
+        icon: str = "",
+        description: str = "",
+        style: Optional[Dict[str, Any]] = None
     ) -> "NodeFlowWidget":
-        """Register a node class implementing the NodeFactory protocol.
+        """Add node type with grid layout (v2.0 simplified API).
         
-        This method extracts metadata from the node class and registers
-        it as a node type that can be instantiated in the visual editor.
+        Simplified method with clearer naming - no JSON schema required.
+        Grid layout defines all UI components directly.
         
         Args:
-            node_class: Class implementing NodeFactory protocol (typically a
-                       subclass of JsonSchemaNodeWidget)
-            type_name: Optional custom type name. If not provided, uses the
-                      class name (converted to snake_case)
-        
+            type_name: Unique type identifier
+            label: Display label for the node
+            grid_layout: Grid layout configuration (NodeGrid model or dict).
+                        Use helpers from grid_layouts module:
+                        - create_three_column_grid()
+                        - create_vertical_stack_grid()
+                        - create_header_body_grid()
+            icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
+            description: Description shown in the panel
+            style: Style configuration dict with 'minWidth', 'maxWidth', 'shadow', etc.
+            
         Returns:
             Self for method chaining
-        
-        Raises:
-            AttributeError: If required attributes (label, parameters) are missing
-            TypeError: If parameters is not a Pydantic BaseModel subclass
             
         Example:
-            >>> flow = NodeFlowWidget()
-            >>> flow.register_node_type(MyCustomNode)
-            >>> flow.register_node_type(AnotherNode, type_name="custom_name")
+            >>> from pynodewidget.grid_layouts import create_three_column_grid
+            >>> from pynodewidget.models import ButtonHandle, NumberField
+            >>> 
+            >>> widget.add_node_type(
+            ...     type_name="processor",
+            ...     label="Data Processor",
+            ...     icon="⚙️",
+            ...     grid_layout=create_three_column_grid(
+            ...         left_components=[ButtonHandle(id="in", label="Input", handle_type="input")],
+            ...         center_components=[NumberField(id="value", label="Value", value=42)],
+            ...         right_components=[ButtonHandle(id="out", label="Output", handle_type="output")]
+            ...     )
+            ... )
+            >>> 
+            >>> # Access values with Pythonic dict syntax
+            >>> widget.values["processor-1"]["value"] = 50
         """
-        from .protocols import NodeMetadata
-        import re
+        from .models import NodeGrid
         
-        # Generate type_name from class name if not provided
-        if type_name is None:
-            # Convert CamelCase to snake_case
-            type_name = re.sub(r'(?<!^)(?=[A-Z])', '_', node_class.__name__).lower()
+        # Convert NodeGrid model to dict if needed
+        if isinstance(grid_layout, NodeGrid):
+            grid_layout = grid_layout.model_dump()
         
-        # Extract metadata from the node class (this will validate the class)
-        metadata = NodeMetadata.from_node_class(node_class, type_name)
+        # Extract default values from grid layout components
+        default_values = {}
+        if isinstance(grid_layout, dict) and "cells" in grid_layout:
+            for cell in grid_layout["cells"]:
+                if "components" in cell:
+                    for component in cell["components"]:
+                        # Extract value from components that have an id and value
+                        if isinstance(component, dict) and "id" in component and "value" in component:
+                            default_values[component["id"]] = component["value"]
         
-        # Convert to template dict and add to node_templates
-        template = metadata.to_dict()
-        self.node_templates = self.node_templates + [template]
-        return self
+        # Call the existing implementation with extracted defaults
+        return self.add_node_type_from_schema(
+            json_schema={},
+            type_name=type_name,
+            label=label,
+            description=description,
+            icon=icon,
+            grid_layout=grid_layout,
+            style=style,
+            _default_values_override=default_values
+        )
     
     def add_node_type_from_schema(
         self, 
@@ -179,13 +241,11 @@ class NodeFlowWidget(anywidget.AnyWidget):
         label: str,
         description: str = "",
         icon: str = "",
-        inputs: Optional[List[Dict[str, str]]] = None,
-        outputs: Optional[List[Dict[str, str]]] = None
+        grid_layout: Optional[Dict[str, Any]] = None,
+        style: Optional[Dict[str, Any]] = None,
+        _default_values_override: Optional[Dict[str, Any]] = None
     ):
-        """Add a node type from a JSON schema (legacy method).
-        
-        Note: This is a legacy method for backward compatibility. For new code,
-        prefer creating a node class and using register_node_type() instead.
+        """Add a node type from a JSON schema with grid layout support.
         
         Args:
             json_schema: JSON Schema definition (can be from Pydantic model_json_schema())
@@ -193,69 +253,86 @@ class NodeFlowWidget(anywidget.AnyWidget):
             label: Display label for the node
             description: Description shown in the panel
             icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
-            inputs: List of input handles with id and label, e.g., 
-                   [{"id": "in1", "label": "Input 1"}, {"id": "in2", "label": "Input 2"}]
-            outputs: List of output handles with id and label, e.g.,
-                    [{"id": "out1", "label": "Output 1"}]
+            grid_layout: Grid layout configuration (use helpers from grid_layouts module).
+                        Can be a dict or a NodeGrid Pydantic model.
+                        If not provided, defaults to vertical layout with JSON schema fields.
+            style: Style configuration dict with 'minWidth', 'maxWidth', 'shadow', etc.
+            _default_values_override: Internal parameter to override default values extraction
+            
+        Example:
+            >>> from pynodewidget.grid_layouts import create_three_column_grid
+            >>> from pynodewidget.models import BaseHandle, TextField
+            >>> 
+            >>> widget.add_node_type_from_schema(
+            ...     json_schema={"type": "object", "properties": {...}},
+            ...     type_name="processor",
+            ...     label="Data Processor",
+            ...     icon="⚙️",
+            ...     grid_layout=create_three_column_grid(
+            ...         left_components=[BaseHandle(id="in1", label="Input", handle_type="input")],
+            ...         center_components=[TextField(id="name", label="Name")],
+            ...         right_components=[BaseHandle(id="out1", label="Output", handle_type="output")]
+            ...     )
+            ... )
         """
-        # Initialize default values from schema
-        default_values = {}
-        if json_schema and "properties" in json_schema:
-            for key, prop in json_schema["properties"].items():
-                if "default" in prop:
-                    default_values[key] = prop["default"]
+        from .grid_layouts import create_vertical_stack_grid, json_schema_to_components
+        from .models import NodeDefinition, NodeTemplate, NodeGrid
         
-        template = {
-            "type": type_name,
-            "label": label,
-            "description": description,
-            "icon": icon,
-            "defaultData": {
-                "label": label,
-                "parameters": json_schema,  # Changed from 'schema' to 'parameters'
-                "inputs": inputs or [],
-                "outputs": outputs or [],
-                "values": default_values
-            }
+        # Initialize default values from schema or override
+        if _default_values_override is not None:
+            default_values = _default_values_override
+        else:
+            default_values = {}
+            if json_schema and "properties" in json_schema:
+                for key, prop in json_schema["properties"].items():
+                    if "default" in prop:
+                        default_values[key] = prop["default"]
+        
+        # Use vertical stack grid with JSON schema fields as default if none provided
+        if grid_layout is None:
+            field_components = json_schema_to_components(json_schema, default_values)
+            grid_layout = create_vertical_stack_grid(middle_components=field_components)
+        
+        # Convert NodeGrid model to dict if needed
+        if isinstance(grid_layout, NodeGrid):
+            grid_layout = grid_layout.model_dump()
+        
+        # Validate that all component IDs are unique
+        try:
+            _validate_unique_component_ids(grid_layout)
+        except ValueError as e:
+            raise ValueError(f"Invalid grid layout for node type '{type_name}': {e}")
+        
+        # Build NodeDefinition (visual structure only)
+        definition_dict = {
+            "grid": grid_layout
         }
         
-        self.node_templates = self.node_templates + [template]
+        # Add optional style configuration
+        if style is not None:
+            definition_dict["style"] = style
+        
+        # Validate using Pydantic models
+        try:
+            definition = NodeDefinition(**definition_dict)
+            template_dict = {
+                "type": type_name,
+                "label": label,
+                "description": description,
+                "icon": icon,
+                "definition": definition.model_dump(),
+                "defaultValues": default_values
+            }
+            template = NodeTemplate(**template_dict)
+            
+            # Add validated template
+            self.node_templates = self.node_templates + [template.model_dump()]
+        except Exception as e:
+            raise ValueError(f"Failed to create valid node template: {e}")
+        
         return self
     
-    def add_node_type_from_pydantic(
-        self, 
-        model_class,  # Pydantic BaseModel class
-        type_name: str,
-        label: str,
-        description: str = "",
-        icon: str = "",
-        inputs: Optional[List[Dict[str, str]]] = None,
-        outputs: Optional[List[Dict[str, str]]] = None
-    ):
-        """Add a node type from a Pydantic model.
-        
-        Args:
-            model_class: Pydantic model class
-            type_name: Unique type identifier
-            label: Display label for the node
-            description: Description shown in the panel
-            icon: Unicode emoji or symbol (e.g., "🔧", "⚙️", "📊")
-            inputs: List of input handles with id and label
-            outputs: List of output handles with id and label
-        """
-        try:
-            from pydantic import BaseModel
-            if not isinstance(model_class, type) or not issubclass(model_class, BaseModel):
-                raise ValueError("model_class must be a Pydantic BaseModel class")
-            schema = model_class.model_json_schema()
-        except ImportError:
-            raise ImportError("pydantic is required for add_node_type_from_pydantic")
-        
-        return self.add_node_type_from_schema(
-            schema, type_name, label, description, icon, inputs, outputs
-        )
-    
-    def export_json(self, filename: str = "flow.json"):
+    def export_json(self, filename: str = "flow.json") -> str:
         """Export the current flow to a JSON file.
         
         Args:
@@ -265,7 +342,8 @@ class NodeFlowWidget(anywidget.AnyWidget):
             "nodes": self.nodes,
             "edges": self.edges,
             "viewport": self.viewport,
-            "node_templates": self.node_templates
+            "node_templates": self.node_templates,
+            "node_values": dict(self.node_values)
         }
         
         with open(filename, 'w') as f:
@@ -274,42 +352,198 @@ class NodeFlowWidget(anywidget.AnyWidget):
         print(f"✓ Flow exported to {filename}")
         return filename
     
-    def load_json(self, filename: str):
-        """Load a flow from a JSON file.
+    def export_yaml(self, filename: str = "flow.yaml") -> str:
+        """Export the current flow to a YAML file.
         
         Args:
-            filename: Input filename
+            filename: Output filename
+            
+        Raises:
+            ImportError: If pyyaml is not installed
+        """
+        try:
+            import yaml
+        except ImportError:
+            raise ImportError(
+                "PyYAML is required for YAML export. Install with: pip install pyyaml"
+            )
+        
+        data = {
+            "nodes": self.nodes,
+            "edges": self.edges,
+            "viewport": self.viewport,
+            "node_templates": self.node_templates,
+            "node_values": _to_plain_dict(self.node_values)
+        }
+        
+        with open(filename, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+        
+        print(f"✓ Flow exported to {filename}")
+        return filename
+    
+    def export(self, filename: str, format: str = None) -> str:
+        """Export the current flow to a file (auto-detects format from extension).
+        
+        Args:
+            filename: Output filename
+            format: Export format ('json' or 'yaml'). If None, auto-detects from filename
+            
+        Returns:
+            Path to the exported file
+        """
+        if format is None:
+            # Auto-detect format from file extension
+            format = filename.split('.')[-1].lower()
+        
+        if format in ('yaml', 'yml'):
+            return self.export_yaml(filename)
+        elif format == 'json':
+            return self.export_json(filename)
+        elif format in ('png', 'jpeg'):
+            return self.export_image(filename)
+        else:
+            # Default to JSON
+            return self.export_json(filename)
+    
+    @classmethod
+    def from_json(cls, filename: str, **kwargs) -> "NodeFlowWidget":
+        """Create a new widget instance from a JSON file.
+        
+        This is a class method that creates and returns a new NodeFlowWidget
+        with the state loaded from the JSON file.
+        
+        Args:
+            filename: Path to the JSON file to load
+            **kwargs: Additional arguments passed to NodeFlowWidget constructor
+            
+        Returns:
+            New NodeFlowWidget instance with loaded state
+            
+        Examples:
+            >>> # Create widget from saved workflow
+            >>> widget = NodeFlowWidget.from_json("workflow.json")
+            >>> 
+            >>> # Create with custom height
+            >>> widget = NodeFlowWidget.from_json("workflow.json", height="800px")
         """
         with open(filename, 'r') as f:
             data = json.load(f)
         
-        self.nodes = data.get("nodes", [])
-        self.edges = data.get("edges", [])
-        self.viewport = data.get("viewport", {"x": 0, "y": 0, "zoom": 1})
+        widget = cls(**kwargs)
+        widget.nodes = data.get("nodes", {})
+        widget.edges = data.get("edges", [])
+        widget.viewport = data.get("viewport", {"x": 0, "y": 0, "zoom": 1})
         if "node_templates" in data:
-            self.node_templates = data["node_templates"]
+            widget.node_templates = data["node_templates"]
+        if "node_values" in data:
+            widget.node_values = data["node_values"]
         
-        print(f"✓ Flow loaded from {filename}")
-        return self
+        return widget
     
-    def get_node_data(self, node_id: str) -> Optional[Dict[str, Any]]:
-        """Get the data for a specific node.
+    def _on_image_data_received(self, change):
+        """Handle image data received from JavaScript."""
+        data_url = change['new']
+        
+        # Skip empty data
+        if not data_url:
+            return
+        
+        # Extract export ID from the data URL (appended by JS)
+        # Format: data:image/png;base64,...|exportId=123
+        export_id = None
+        if '|exportId=' in data_url:
+            data_url, export_id_str = data_url.rsplit('|exportId=', 1)
+            try:
+                export_id = int(export_id_str)
+            except ValueError:
+                pass
+        
+        # Skip if no export ID or filename is not tracked
+        if export_id is None or export_id not in self._pending_exports:
+            return
+        
+        filename = self._pending_exports.pop(export_id)
+        
+        # Decode and save
+        if data_url.startswith('data:'):
+            import base64
+            from pathlib import Path
+            
+            try:
+                _, encoded = data_url.split(',', 1)
+                image_data = base64.b64decode(encoded)
+                Path(filename).write_bytes(image_data)
+                print(f"✓ Image saved to {filename}")
+            except Exception as e:
+                print(f"✗ Failed to save image: {e}")
+    
+    def export_image(
+        self,
+        filename: str,
+        quality: float = 1.0,
+        pixel_ratio: int = 2,
+        save_to_file: bool = True,
+        browser_download: bool = False
+    ) -> None:
+        """Export the flow visualization as an image.
+        
+        Triggers a browser-based image export using html-to-image. By default,
+        saves the image data to Python and writes it to the specified file path.
+        Optionally can also trigger a browser download.
+        
+        Note:
+            This method only works in browser environments (Jupyter, Marimo).
+            It cannot be used in pure Python scripts without a browser.
         
         Args:
-            node_id: Node ID
-        
-        Returns:
-            Node data dict or None if not found
+            filename: File path to save the image (when save_to_file=True) or
+                     suggested download name (when browser_download=True)
+            quality: Image quality for JPEG (0.0-1.0)
+            pixel_ratio: Pixel ratio for higher DPI (default: 2)
+            save_to_file: If True, save image data to filesystem via Python (default: True)
+            browser_download: If True, also trigger browser download (default: False)
+            
+        Examples:
+            >>> # Save to filesystem via Python
+            >>> widget.export_image("workflow.png")
+            >>> 
+            >>> # Browser download only
+            >>> widget.export_image("workflow.png", save_to_file=False, browser_download=True)
+            >>> 
+            >>> # Both: save to file AND trigger browser download
+            >>> widget.export_image("workflow.png", browser_download=True)
         """
-        for node in self.nodes:
-            if node.get("id") == node_id:
-                return node.get("data", {})
-        return None
+        # Validate format
+        format = filename.split('.')[-1].lower()
+        if format not in ("png", "jpeg"):
+            raise ValueError("Invalid format. Supported formats: png, jpeg")
+        
+        # Increment export ID
+        self._export_id += 1
+        export_id = self._export_id
+        
+        # Store filename for callback if saving to file
+        if save_to_file:
+            self._pending_exports[export_id] = filename
+        
+        # Append to trigger list - this ensures each export is processed separately
+        # even when called multiple times rapidly without sleep
+        self._export_image_trigger = self._export_image_trigger + [{
+            "format": format,
+            "filename": filename,
+            "quality": quality,
+            "pixelRatio": pixel_ratio,
+            "saveToFile": save_to_file,
+            "browserDownload": browser_download,
+            "exportId": export_id
+        }]
     
-    def clear(self):
+    def clear(self) -> None:
         """Clear all nodes and edges."""
-        self.nodes = []
+        self.nodes = {}  # Empty dict instead of list
         self.edges = []
+        self.node_values = {}  # Clear values too
         return self
     
     def get_flow_data(self) -> Dict[str, Any]:

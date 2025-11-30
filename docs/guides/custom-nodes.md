@@ -417,45 +417,9 @@ def _validate_inputs(self, inputs: dict) -> bool:
     )
 ```
 
-## Factory Functions
+## Factory Functions (Optional)
 
-For quick prototyping, use factory functions:
-
-```python
-from pynodeflow.node_builder import (
-    create_minimal_node,
-    create_form_node,
-    create_processing_node
-)
-
-# Minimal node
-SimpleNode = create_minimal_node(
-    type_name="simple",
-    label="Simple Node",
-    fields={"name": "string", "value": "integer"}
-)
-
-# Form node
-FormNode = create_form_node(
-    type_name="form",
-    label="Form Node",
-    fields={
-        "name": {"type": "string", "default": ""},
-        "age": {"type": "integer", "minimum": 0, "maximum": 120}
-    }
-)
-
-# Processing node
-ProcessorNode = create_processing_node(
-    type_name="processor",
-    label="Processor",
-    input_names=["data"],
-    output_names=["result"],
-    fields={"threshold": {"type": "number", "default": 0.5}}
-)
-```
-
-See **[Node Builder API](../api/python/node-builder.md)** for full details.
+For quick prototyping, use factory functions from `node_builder` module. See **[Node Builder API](../api/python/node-builder.md)** for details.
 
 ## Real-World Examples
 
@@ -569,153 +533,20 @@ class ChartNode(JsonSchemaNodeWidget):
 
 ## Best Practices
 
-### 1. Use Descriptive Names
-
-```python
-# ❌ Vague
-class Node1(JsonSchemaNodeWidget):
-    label = "Node"
-    parameters = Params
-
-# ✅ Clear
-class ImageResizer(JsonSchemaNodeWidget):
-    label = "Image Resizer"
-    parameters = ResizerParams
-```
-
-### 2. Add Comprehensive Descriptions
-
-```python
-class Params(BaseModel):
-    threshold: float = Field(
-        default=0.5,
-        ge=0.0,
-        le=1.0,
-        description="Detection confidence threshold. Higher values reduce false positives but may miss detections."
-    )
-```
-
-### 3. Use Type Hints
-
-```python
-from typing import Literal
-
-class Params(BaseModel):
-    mode: Literal["auto", "manual", "advanced"] = "auto"  # Dropdown
-    count: int = Field(ge=1, le=100)  # Validated integer
-```
-
-### 4. Validate Inputs
-
-```python
-def execute(self, inputs: dict) -> dict:
-    # Check required inputs exist
-    if "data" not in inputs:
-        return {"error": "Missing required input 'data'"}
-    
-    # Validate input types
-    data = inputs["data"]
-    if not isinstance(data, list):
-        return {"error": "Input must be a list"}
-    
-    # Proceed with processing
-    ...
-```
-
-### 5. Handle Errors Gracefully
-
-```python
-def execute(self, inputs: dict) -> dict:
-    try:
-        result = self._process(inputs)
-        return {"result": result}
-    except ValueError as e:
-        return {"error": f"Validation error: {e}"}
-    except Exception as e:
-        return {"error": f"Processing error: {e}"}
-```
-
-### 6. Use Sensible Defaults
-
-```python
-class Params(BaseModel):
-    # Good defaults make nodes usable immediately
-    threshold: float = 0.5
-    enabled: bool = True
-    mode: str = "auto"
-```
-
-### 7. Organize by Category
-
-```python
-# Input nodes
-class DataLoader(JsonSchemaNodeWidget):
-    category = "input"
-
-# Processing nodes
-class Transformer(JsonSchemaNodeWidget):
-    category = "processing"
-
-# Output nodes
-class Exporter(JsonSchemaNodeWidget):
-    category = "output"
-```
+- **Use descriptive names** for classes and labels
+- **Add descriptions** to fields for better UX
+- **Validate inputs** in `execute()` method
+- **Handle errors gracefully** with try/except
+- **Provide sensible defaults** for all parameters
+- **Organize by category** (input, processing, output)
 
 ## Troubleshooting
 
-### Node Not Appearing
+**Node not appearing**: Ensure `label` and `parameters` are defined and node is registered.
 
-Check registration:
+**Pydantic validation errors**: Check field constraints match provided values.
 
-```python
-# Ensure node is registered
-flow.register_node(MyNode)
-
-# Verify registration
-print(flow.node_templates)
-```
-
-### Invalid Configuration
-
-Ensure required attributes are present:
-
-```python
-class InvalidNode(JsonSchemaNodeWidget):
-    # ❌ Missing 'label'
-    parameters = Params
-
-# Fix: Add required attributes
-class ValidNode(JsonSchemaNodeWidget):
-    label = "Valid Node"  # ✅
-    parameters = Params
-```
-
-### Pydantic Validation Errors
-
-Check field constraints:
-
-```python
-# ❌ Invalid: value outside range
-node = MyNode(threshold=1.5)  # ge=0, le=1
-
-# ✅ Valid: within constraints
-node = MyNode(threshold=0.8)
-```
-
-### Values Not Updating
-
-Use proper methods:
-
-```python
-# ❌ Direct assignment doesn't sync
-node.threshold = 0.8
-
-# ✅ Use set_value
-node.set_value("threshold", 0.8)
-
-# ✅ Or set_values for multiple
-node.set_values({"threshold": 0.8, "enabled": False})
-```
+**Values not updating**: Use `set_value()` or `set_values()` methods, not direct assignment.
 
 ## Next Steps
 

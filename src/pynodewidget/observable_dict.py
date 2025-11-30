@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional
 import traitlets as t
 
 
-class ObservableDict(dict):
+class ObservableDict(dict[str, Any]):
     """A dictionary that triggers a callback on any mutation.
     
     Wraps a standard dict and intercepts all mutation operations to trigger
@@ -18,7 +18,7 @@ class ObservableDict(dict):
     Nested dicts are automatically wrapped to enable recursive observation.
     """
     
-    def __init__(self, *args, callback: Optional[Callable[[], None]] = None, **kwargs):
+    def __init__(self, *args: Any, callback: Optional[Callable[[], None]] = None, **kwargs: Any) -> None:
         """Initialize an ObservableDict.
         
         Args:
@@ -35,13 +35,13 @@ class ObservableDict(dict):
             if isinstance(value, dict) and not isinstance(value, ObservableDict):
                 super().__setitem__(key, ObservableDict(value, callback=callback))
     
-    def _notify(self):
+    def _notify(self) -> None:
         """Trigger the callback if set."""
         callback = object.__getattribute__(self, '_callback')
         if callback:
             callback()
     
-    def _rewrap_with_callback(self, callback: Callable[[], None]):
+    def _rewrap_with_callback(self, callback: Callable[[], None]) -> None:
         """Recursively rewrap self and all nested dicts with a new callback.
         
         This is needed when ObservableDict is deserialized by traitlets and
@@ -88,7 +88,7 @@ class ObservableDict(dict):
         self._notify()
         return result
     
-    def popitem(self) -> tuple:
+    def popitem(self) -> tuple[Any, Any]:
         """Remove and return an arbitrary item, triggering callback."""
         result = super().popitem()
         self._notify()
@@ -108,12 +108,12 @@ class ObservableDict(dict):
             self._notify()
         return super().setdefault(key, default)
     
-    def __reduce_ex__(self, protocol):
+    def __reduce_ex__(self, protocol: int) -> tuple[type[dict[str, Any]], tuple[dict[str, Any]]]:
         """Support for pickling - return as regular dict."""
         return (dict, (dict(self),))
 
 
-class ObservableDictTrait(t.TraitType):
+class ObservableDictTrait(t.TraitType[ObservableDict, dict[str, Any]]):
     """A traitlet that maintains ObservableDict with automatic callback rewiring.
     
     Ensures values are wrapped in ObservableDict and callbacks are preserved
@@ -121,14 +121,14 @@ class ObservableDictTrait(t.TraitType):
     """
     
     info_text = 'an ObservableDict'
-    default_value = {}
+    default_value: dict[str, Any] = {}
     
-    def __init__(self, default_value=t.Undefined, **kwargs):
+    def __init__(self, default_value: Any = t.Undefined, **kwargs: Any) -> None:
         if default_value is t.Undefined:
             default_value = {}
         super().__init__(default_value=default_value, **kwargs)
     
-    def validate(self, obj, value):
+    def validate(self, obj: Any, value: Any) -> ObservableDict:
         """Validate and wrap value in ObservableDict."""
         callback = lambda: obj.notify_change({'name': self.name, 'type': 'change'})
         if isinstance(value, ObservableDict):

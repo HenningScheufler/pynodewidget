@@ -1,13 +1,14 @@
 # Developer Guide
 
 !!! info "Audience"
-    This guide is for **contributors** and **advanced users** who want to:
+    This guide is for **JavaScript/TypeScript developers** who want to:
     
-    - Understand PyNodeWidget's JavaScript/TypeScript internals
-    - Contribute to the frontend codebase
-    - Create custom field types with React components
-    - Build plugins that extend PyNodeWidget's capabilities
-    - Debug complex Python ↔ JavaScript interactions
+    - Understand PyNodeWidget's frontend architecture
+    - Contribute to the JavaScript codebase
+    - Create custom field types, handles, or components
+    - Extend the library with plugins
+    
+    **For Python users:** See the [User Guide](../guides/index.md) instead.
 
 !!! note "Prerequisites"
     Familiarity with:
@@ -15,66 +16,119 @@
     - **React 18+** - Component model, hooks, state management
     - **TypeScript** - Type system, interfaces, generics
     - **ReactFlow** - Node graph library fundamentals
-    - **Modern JavaScript** - ES modules, async/await, bundlers
+    - **Valibot** - Schema validation library
 
 ---
 
 ## Overview
 
-PyNodeWidget is a hybrid Python-JavaScript library that renders interactive node graphs in Jupyter notebooks and web applications. The Python side (`pynodeflow` package) provides a declarative API for defining nodes, while the JavaScript side (`js/` folder) renders them using React and ReactFlow.
+PyNodeWidget renders interactive node graphs using a **three-layer grid system**. Python sends JSON schemas, JavaScript renders using React components, and user interactions sync back via AnyWidget.
 
-### Architecture at a Glance
+### Core Architecture
 
 ```mermaid
 graph LR
-    A[Python: NodeBuilder] -->|JSON Schema| B[AnyWidget Bridge]
-    B -->|Sync Templates| C[NodeComponentBuilder]
-    C -->|Generate| D[React Components]
-    D -->|Render| E[ReactFlow Canvas]
-    E -->|User Events| D
-    D -->|Update Model| B
-    B -->|Trigger Observers| A
+    A[Python JSON] -->|AnyWidget| B[NodeGrid]
+    B --> C[GridRenderer]
+    C --> D[ComponentFactory]
+    D --> E[React Components]
+    E -->|User Input| F[Python]
+    
+    style B fill:#e1f5ff
+    style D fill:#fff4e1
 ```
 
-**Key Components:**
+**Key Concepts:**
 
-- **Python Layer**: `NodeBuilder`, `ObservableDict`
-- **AnyWidget Bridge**: Bidirectional state synchronization
-- **React Layer**: `NodeComponentBuilder`, `NodePanel`, field components
-- **ReactFlow**: Canvas rendering, drag-and-drop, connections
+- **NodeGrid**: Defines rows, columns, and cells
+- **GridCell**: Contains layout and components
+- **ComponentType**: Discriminated union of all component types
+- **NodeTemplate**: Immutable blueprint (shared)
+- **NodeInstance**: Mutable runtime data (per-node)
 
 ---
 
-## What's in This Guide
+## Documentation Structure
 
-This Developer Guide covers the JavaScript/TypeScript side of PyNodeWidget. Use it to:
+### [Architecture](architecture.md)
+**Start here to understand the system.**
 
-### [Architecture Overview](architecture.md)
-Understand how Python and JavaScript communicate, the state synchronization model, and the data flow between layers.
+- Data flow (Python ↔ JavaScript)
+- Three-layer grid system
+- Core data structures
+- Value synchronization
+- Extension points
+
+**Time:** 15 minutes
+
+### [Extension Guide](extending.md)
+**Copy-paste recipes for common tasks.**
+
+- Adding custom field types
+- Adding custom handle types
+- Creating services
+- Building custom hooks
+- Testing extensions
+
+**Time:** 5-10 minutes per recipe
 
 ### [JavaScript Development](javascript.md)
-Set up your development environment with Bun, run the dev server, understand the build process, and learn the project structure.
+**Setup and build commands.**
 
-### Field Registry API *(Coming Soon)*
-Register custom field types with React components. Examples: color pickers, date ranges, code editors.
+- Environment setup
+- Development workflow
+- Testing
+- Build system
+- Common tasks
 
-### Layout System API *(Coming Soon)*
-Create custom node layouts beyond the default vertical form. Control field positioning, grouping, and responsive behavior.
+**Time:** 5 minutes
 
-### Handle System API *(Coming Soon)*
-Build custom handle components for specialized input/output types. Control visual styling, positioning, and connection logic.
+### [Hooks Reference](hooks.md)
+**Available React hooks.**
 
-### Hooks API *(Coming Soon)*
-Leverage PyNodeWidget's React hooks: `useAutoLayout`, `useContextMenu`, `useExport`, and more.
+- useSetNodeValues
+- useSetNodesDict
+- useAutoLayout
+- useContextMenu
+- useExport
 
-### Component Library *(Coming Soon)*
-Explore the built-in components: `BaseHandle`, `NodeFactory`, `NodeForm`, `LabeledHandle`, and UI primitives.
+**Time:** 2 minutes
 
-### State Management *(Coming Soon)*
-Understand PyNodeWidget's Zustand stores: node state, selection state, layout state, and data synchronization patterns.
+---
 
-### TypeScript Types *(Coming Soon)*
-Complete reference of TypeScript interfaces, types, and generics used throughout the codebase.
+## Quick Start
+
+### 1. Understand the Architecture
+
+Read [Architecture](architecture.md) to understand:
+- How the three-layer grid works
+- Core data structures (the Essential 5)
+- Value synchronization patterns
+
+### 2. Set Up Development Environment
+
+```bash
+cd js
+bun install
+bun run dev
+```
+
+See [JavaScript Development](javascript.md) for details.
+
+### 3. Try an Extension
+
+Follow a recipe in the [Extension Guide](extending.md):
+- Add a color picker field
+- Create a multi-handle component
+- Build a validation service
+
+### 4. Explore the Codebase
+
+**Key Files:**
+- `src/components/ComponentFactory.tsx` - Core rendering
+- `src/components/GridRenderer.tsx` - Three-layer system
+- `src/utils/NodeComponentBuilder.tsx` - Schema → Component
+- `src/types/schema.ts` - TypeScript types
 
 ---
 
@@ -82,22 +136,49 @@ Complete reference of TypeScript interfaces, types, and generics used throughout
 
 | If you want to... | Start here... |
 |-------------------|---------------|
-| **Understand the architecture** | [Architecture Overview](architecture.md) |
-| **Set up a development environment** | [JavaScript Development](javascript.md) |
-| **Create a custom field type** | Field Registry API *(coming soon)* |
-| **Build a custom node layout** | Layout System API *(coming soon)* |
-| **Extend PyNodeWidget with plugins** | Architecture + Field Registry + Hooks |
-| **Debug Python ↔ JS sync issues** | [Architecture Overview](architecture.md) |
-| **Contribute to the frontend** | [JavaScript Development](javascript.md) + Testing Guide |
+| **Understand how it works** | [Architecture](architecture.md) |
+| **Add a custom field** | [Extension Guide](extending.md) → Custom Field Types |
+| **Add a custom handle** | [Extension Guide](extending.md) → Custom Handle Types |
+| **Set up development** | [JavaScript Development](javascript.md) |
+| **Use a hook** | [Hooks Reference](hooks.md) |
+| **Debug Python ↔ JS sync** | [Architecture](architecture.md) → Value Synchronization |
+| **Contribute code** | [JavaScript Development](javascript.md) + [Extension Guide](extending.md) |
 
 ---
 
-## Developer vs. User Documentation
+## Development vs. User Documentation
 
 !!! tip "Choose the Right Guide"
     - **New to PyNodeWidget?** Start with the [User Guide](../guides/index.md) (Python-only)
-    - **Building custom nodes in Python?** See [Creating Custom Nodes](../guides/custom-nodes.md)
+    - **Building nodes in Python?** See [Creating Custom Nodes](../guides/custom-nodes.md)
     - **Need to extend the JavaScript side?** You're in the right place!
+
+---
+
+## Getting Help
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/HenningScheufler/pynodewidget/issues)
+- **Architecture questions**: Read [Architecture](architecture.md) first
+- **How-to questions**: Check [Extension Guide](extending.md) recipes
+- **Code examples**: See `js/dev/DevApp.tsx` and `examples/`
+
+---
+
+## Contributing
+
+We welcome contributions! Before starting:
+
+1. Read [Architecture](architecture.md) to understand the system
+2. Set up your environment: [JavaScript Development](javascript.md)
+3. Follow patterns in [Extension Guide](extending.md)
+4. Add tests (see Testing section in JavaScript Development)
+5. Submit a PR
+
+**Code Style:**
+- TypeScript with strict mode
+- Valibot for schemas
+- Tailwind CSS for styling
+- Vitest for testing
 
 The **User Guide** is pure Python—no JavaScript knowledge required. The **Developer Guide** dives into React, TypeScript, bundlers, and the internal APIs.
 

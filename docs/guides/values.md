@@ -4,13 +4,11 @@ Read and update node field values from Python with automatic bidirectional sync.
 
 ## Overview
 
-PyNodeWidget provides **bidirectional synchronization** between Python and JavaScript:
+PyNodeWidget provides bidirectional synchronization between Python and JavaScript using AnyWidget:
 
-- Changes in the UI **automatically update** Python values
-- Changes in Python **automatically update** the UI
-- No manual refresh or sync calls needed
-
-This is powered by `ObservableDict` and Jupyter's widget communication layer.
+- UI changes automatically update Python values
+- Python changes automatically update the UI
+- Powered by `ObservableDict` for automatic sync
 
 ## Widget-Level Value Access
 
@@ -433,250 +431,26 @@ print(stats)
 
 ## Best Practices
 
-### 1. Use Descriptive Keys
-
-```python
-# ❌ Cryptic keys
-flow.update_node_value("node-1", "v", 0.8)
-
-# ✅ Clear keys
-flow.update_node_value("node-1", "threshold", 0.8)
-```
-
-### 2. Provide Defaults
-
-Always provide defaults when reading:
-
-```python
-# ❌ May raise KeyError
-threshold = flow.node_values["node-1"]["threshold"]
-
-# ✅ Safe with default
-threshold = flow.get_node_value("node-1", "threshold", 0.5)
-```
-
-### 3. Batch Updates
-
-Use `set_node_values()` for multiple changes:
-
-```python
-# ❌ Multiple syncs
-flow.update_node_value("node-1", "a", 1)
-flow.update_node_value("node-1", "b", 2)
-flow.update_node_value("node-1", "c", 3)
-
-# ✅ Single sync
-flow.set_node_values("node-1", {"a": 1, "b": 2, "c": 3})
-```
-
-### 4. Type Safety
-
-Ensure correct types:
-
-```python
-# ❌ Type mismatch
-flow.update_node_value("node-1", "count", "10")  # count is int
-
-# ✅ Correct type
-flow.update_node_value("node-1", "count", 10)
-```
-
-### 5. Validate Before Use
-
-Check values before processing:
-
-```python
-values = flow.get_node_values("processor-1")
-
-# Validate
-if not values:
-    print("Node has no values")
-elif "threshold" not in values:
-    print("Missing required value 'threshold'")
-else:
-    # Safe to use
-    process(values["threshold"])
-```
+- **Descriptive keys**: Use clear field names
+- **Provide defaults**: Always use defaults when reading values
+- **Batch updates**: Use `set_node_values()` for multiple changes
+- **Type safety**: Ensure values match Pydantic model types
+- **Validate**: Check values before processing
 
 ## Troubleshooting
 
-### Values Not Syncing
+**Values not syncing**: Ensure widget is displayed in Jupyter before updates.
 
-Ensure widget is displayed:
+**Nested update not syncing**: Use `update_node_value()` or explicit `update()` call.
 
-```python
-# Widget must be displayed for sync to work
-flow = NodeFlowWidget()
-display(flow)  # In Jupyter
+**Node ID not found**: Print `list(flow.node_values.keys())` to verify node exists.
 
-# Now updates will sync
-flow.update_node_value("node-1", "value", 100)
-```
+**Type errors**: Ensure value types match Pydantic model definitions.
 
-### Nested Update Not Syncing
-
-Use `update_node_value()` or reassignment:
-
-```python
-# ❌ May not sync (depending on depth)
-flow.node_values["node-1"]["nested"]["value"] = 1
-
-# ✅ Explicitly update
-flow.update_node_value("node-1", "nested", {"value": 1})
-
-# ✅ Or use ObservableDict update
-flow.node_values["node-1"].update({"nested": {"value": 1}})
-```
-
-### Node ID Not Found
-
-Check node ID matches:
-
-```python
-# Print all node IDs
-print(list(flow.node_values.keys()))
-
-# Verify node exists
-if "processor-1" in flow.node_values:
-    values = flow.node_values["processor-1"]
-else:
-    print("Node not found")
-```
-
-### Type Errors
-
-Ensure value types match Pydantic model:
-
-```python
-# If FieldsModel has: count: int = 0
-
-# ❌ Wrong type
-flow.update_node_value("node-1", "count", "10")
-
-# ✅ Correct type
-flow.update_node_value("node-1", "count", 10)
-```
-
-### Observer Not Triggering
-
-Check observer registration:
-
-```python
-def my_observer(change):
-    print("Changed:", change)
-
-# ✅ Correct
-flow.observe(my_observer, names=["node_values"])
-
-# ❌ Wrong trait name
-flow.observe(my_observer, names=["values"])  # Should be "node_values"
-```
-
-## Advanced Patterns
-
-### Value History
-
-Track value changes over time:
-
-```python
-from collections import defaultdict
-
-history = defaultdict(list)
-
-def track_changes(change):
-    """Record all value changes."""
-    new_values = change["new"]
-    
-    for node_id, values in new_values.items():
-        history[node_id].append(values.copy())
-
-flow.observe(track_changes, names=["node_values"])
-
-# Later: view history
-print(history["node-1"])
-```
-
-### Undo/Redo
-
-Implement undo functionality:
-
-```python
-class UndoManager:
-    def __init__(self, flow):
-        self.flow = flow
-        self.history = []
-        self.position = -1
-    
-    def save_state(self):
-        """Save current state."""
-        state = {
-            node_id: values.copy()
-            for node_id, values in self.flow.node_values.items()
-        }
-        self.history = self.history[:self.position + 1]
-        self.history.append(state)
-        self.position += 1
-    
-    def undo(self):
-        """Restore previous state."""
-        if self.position > 0:
-            self.position -= 1
-            state = self.history[self.position]
-            for node_id, values in state.items():
-                self.flow.set_node_values(node_id, values)
-    
-    def redo(self):
-        """Restore next state."""
-        if self.position < len(self.history) - 1:
-            self.position += 1
-            state = self.history[self.position]
-            for node_id, values in state.items():
-                self.flow.set_node_values(node_id, values)
-
-# Usage
-undo_manager = UndoManager(flow)
-undo_manager.save_state()  # Save checkpoint
-# ... make changes ...
-undo_manager.undo()  # Restore previous state
-```
-
-### Value Validation
-
-Centralized validation:
-
-```python
-def validate_all_nodes(flow):
-    """Validate all node values."""
-    errors = {}
-    
-    for node_id, values in flow.node_values.items():
-        node_errors = []
-        
-        # Example validations
-        if "threshold" in values:
-            t = values["threshold"]
-            if not 0 <= t <= 1:
-                node_errors.append("Threshold must be 0-1")
-        
-        if "count" in values:
-            c = values["count"]
-            if c < 0:
-                node_errors.append("Count must be non-negative")
-        
-        if node_errors:
-            errors[node_id] = node_errors
-    
-    return errors
-
-# Check all nodes
-errors = validate_all_nodes(flow)
-if errors:
-    print("Validation errors:", errors)
-```
+**Observer not triggering**: Check observer is registered with correct trait name (`"node_values"`).
 
 ## Next Steps
 
 - **[Creating Custom Nodes](custom-nodes.md)**: Build nodes with custom value management
-- **[ObservableDict API](../api/python/observable-dict.md)**: Deep dive into sync mechanism
 - **[NodeFlowWidget API](../api/python/widget.md)**: Full widget API reference
-- **[Import/Export](import-export.md)**: Save and load values
+- **[Import/Export](import-export.md)**: Save and load workflows with values
