@@ -51,7 +51,7 @@ def test_load_json():
         filename = f.name
     
     try:
-        widget.load_json(filename)
+        widget = NodeFlowWidget.from_json(filename)
         
         assert widget.nodes == test_data["nodes"]
         assert widget.edges == test_data["edges"]
@@ -76,7 +76,7 @@ def test_load_json_without_templates():
         filename = f.name
     
     try:
-        widget.load_json(filename)
+        widget = NodeFlowWidget.from_json(filename)
         assert widget.nodes == test_data["nodes"]
         assert widget.edges == []
     finally:
@@ -117,8 +117,7 @@ def test_complete_workflow():
         widget1.export_json(filename)
         
         # Load into new widget
-        widget2 = NodeFlowWidget()
-        widget2.load_json(filename)
+        widget2 = NodeFlowWidget.from_json(filename)
         
         # Verify data
         assert len(widget2.nodes) == 1
