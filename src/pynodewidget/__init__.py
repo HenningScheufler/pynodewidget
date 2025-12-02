@@ -1,6 +1,6 @@
 """PyNodeWidget - ReactFlow wrapper for Python using AnyWidget."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .widget import NodeFlowWidget
 from .protocols import NodeFactory, NodeMetadata
