@@ -18,6 +18,12 @@ PyNodeWidget enables you to build node-based workflows entirely from Python. Def
 
     Customize node appearance with headers, footers, colors, and layouts from Python.
 
+-   :material-grid: **[Grid Layouts](grid-layouts.md)**
+
+    ---
+
+    Build complex node layouts efficiently with GridBuilder API and preset templates.
+
 -   :material-eye-off: **[Conditional Fields](conditional-fields.md)**
 
     ---
