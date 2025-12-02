@@ -14996,8 +14996,8 @@ function m3(e) {
   var a;
   if ("component" in e) {
     const { component: l, onValueChange: u } = e, f = fi(), d = ((a = f == null ? void 0 : f.nodeData.values) == null ? void 0 : a[l.id]) ?? l.value ?? "", h = l.label ?? g3(l.id);
-    return /* @__PURE__ */ I.jsxs("div", { className: "component-text-field", children: [
-      /* @__PURE__ */ I.jsx("label", { className: "text-xs text-gray-600 mb-1", children: h }),
+    return /* @__PURE__ */ I.jsxs("div", { className: "component-text-field w-full flex flex-col gap-1", children: [
+      /* @__PURE__ */ I.jsx("label", { className: "text-xs text-gray-600", children: h }),
       /* @__PURE__ */ I.jsx(
         Kl,
         {
@@ -15008,7 +15008,7 @@ function m3(e) {
           onPointerDown: (p) => p.stopPropagation(),
           placeholder: l.placeholder,
           "aria-label": h,
-          className: "h-8 text-xs"
+          className: "h-8 text-xs w-full"
         }
       )
     ] });
@@ -15038,8 +15038,8 @@ function y3(e) {
   var l;
   if ("component" in e) {
     const { component: u, onValueChange: f } = e, d = fi(), h = ((l = d == null ? void 0 : d.nodeData.values) == null ? void 0 : l[u.id]) ?? u.value ?? 0, p = u.label ?? v3(u.id);
-    return /* @__PURE__ */ I.jsxs("div", { className: "component-number-field", children: [
-      /* @__PURE__ */ I.jsx("label", { className: "text-xs text-gray-600 mb-1", children: p }),
+    return /* @__PURE__ */ I.jsxs("div", { className: "component-number-field w-full flex flex-col gap-1", children: [
+      /* @__PURE__ */ I.jsx("label", { className: "text-xs text-gray-600", children: p }),
       /* @__PURE__ */ I.jsx(
         Kl,
         {
@@ -15051,7 +15051,7 @@ function y3(e) {
           onPointerDownCapture: (m) => m.stopPropagation(),
           onWheel: (m) => m.currentTarget.blur(),
           "aria-label": p,
-          className: "h-8 text-xs"
+          className: "h-8 text-xs w-full"
         }
       )
     ] });
@@ -15734,7 +15734,7 @@ function G3(e) {
   var s;
   if ("component" in e) {
     const { component: a, onValueChange: l } = e, u = fi(), f = ((s = u == null ? void 0 : u.nodeData.values) == null ? void 0 : s[a.id]) ?? a.value ?? !1;
-    return /* @__PURE__ */ I.jsxs("div", { className: "component-bool-field flex items-center gap-2", children: [
+    return /* @__PURE__ */ I.jsxs("div", { className: "component-bool-field w-full flex items-center gap-2", children: [
       /* @__PURE__ */ I.jsx(
         W1,
         {
@@ -19193,13 +19193,13 @@ function xB(e) {
   var l;
   if ("component" in e) {
     const { component: u, onValueChange: f } = e, d = fi(), h = ((l = d == null ? void 0 : d.nodeData.values) == null ? void 0 : l[u.id]) ?? u.value ?? "";
-    return /* @__PURE__ */ I.jsxs("div", { className: "component-select-field", children: [
-      /* @__PURE__ */ I.jsx("label", { className: "text-xs text-gray-600 mb-1", children: u.label }),
+    return /* @__PURE__ */ I.jsxs("div", { className: "component-select-field w-full flex flex-col gap-1", children: [
+      /* @__PURE__ */ I.jsx("label", { className: "text-xs text-gray-600", children: u.label }),
       /* @__PURE__ */ I.jsxs(v_, { value: h, onValueChange: (p) => f == null ? void 0 : f(u.id, p), children: [
         /* @__PURE__ */ I.jsx(
           w_,
           {
-            className: "h-8 text-xs",
+            className: "h-8 text-xs w-full",
             onMouseDown: (p) => p.stopPropagation(),
             onPointerDown: (p) => p.stopPropagation(),
             "aria-label": u.label,
@@ -19489,6 +19489,8 @@ function $B({ component: e }) {
     {
       className: "component-header px-3 py-2 font-semibold flex items-center gap-2",
       style: {
+        width: "100%",
+        height: "100%",
         backgroundColor: e.bgColor,
         color: e.textColor
       },
@@ -19505,6 +19507,8 @@ function BB({ component: e }) {
     {
       className: `component-footer px-3 py-2 text-xs text-muted-foreground border-t ${e.className || ""}`,
       style: {
+        width: "100%",
+        height: "100%",
         backgroundColor: e.bgColor,
         color: e.textColor
       },
@@ -19601,6 +19605,12 @@ function UB({ component: e, onValueChange: t }) {
       onMouseDown: (l) => l.stopPropagation(),
       onPointerDown: (l) => l.stopPropagation(),
       className: "w-full",
+      style: {
+        backgroundColor: e.bgColor,
+        color: e.textColor,
+        width: "100%",
+        height: "100%"
+      },
       children: e.label
     }
   );
@@ -19643,9 +19653,10 @@ function KB({
   )) }) });
 }
 function XB(e) {
+  const t = e.coordinates.row_span || 1, r = e.coordinates.col_span || 1;
   return {
-    gridRow: `${e.coordinates.row} / span ${e.coordinates.row_span || 1}`,
-    gridColumn: `${e.coordinates.col} / span ${e.coordinates.col_span || 1}`
+    gridRow: `${e.coordinates.row} / span ${t}`,
+    gridColumn: `${e.coordinates.col} / span ${r}`
   };
 }
 function QB(e) {
@@ -19654,16 +19665,22 @@ function QB(e) {
     flexDirection: (e == null ? void 0 : e.direction) || "column",
     alignItems: (e == null ? void 0 : e.align) || "start",
     justifyContent: (e == null ? void 0 : e.justify) || "start",
-    gap: (e == null ? void 0 : e.gap) || "4px"
+    gap: (e == null ? void 0 : e.gap) || "4px",
+    height: "100%",
+    width: "100%"
   } : e.type === "grid" ? {
     display: "grid",
     gap: e.gap || "4px",
     alignItems: e.align || "start",
-    justifyContent: e.justify || "start"
+    justifyContent: e.justify || "start",
+    height: "100%",
+    width: "100%"
   } : e.type === "stack" ? {
     display: "flex",
     flexDirection: "column",
-    gap: e.gap || "4px"
+    gap: e.gap || "4px",
+    height: "100%",
+    width: "100%"
   } : {};
 }
 function ZB({

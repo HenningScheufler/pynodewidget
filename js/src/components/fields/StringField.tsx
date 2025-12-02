@@ -58,8 +58,8 @@ export function StringField(props: StringFieldComponentProps) {
     const displayLabel = component.label ?? inferLabelFromId(component.id);
     
     return (
-      <div className="component-text-field">
-        <label className="text-xs text-gray-600 mb-1">{displayLabel}</label>
+      <div className="component-text-field w-full flex flex-col gap-1">
+        <label className="text-xs text-gray-600">{displayLabel}</label>
         <Input
           type="text"
           value={currentValue}
@@ -68,7 +68,7 @@ export function StringField(props: StringFieldComponentProps) {
           onPointerDown={(e) => e.stopPropagation()}
           placeholder={component.placeholder}
           aria-label={displayLabel}
-          className="h-8 text-xs"
+          className="h-8 text-xs w-full"
         />
       </div>
     );

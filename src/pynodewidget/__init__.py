@@ -8,6 +8,7 @@ from .json_schema_node import NodeBuilder
 from .observable_dict import ObservableDict
 from . import grid_layouts
 from . import models
+from .layout import GridBuilder, PresetConfig, PRESETS
 
 __all__ = [
     "NodeFlowWidget",
@@ -17,4 +18,7 @@ __all__ = [
     "ObservableDict",
     "grid_layouts",
     "models",
+    "GridBuilder",
+    "PresetConfig",
+    "PRESETS",
 ]

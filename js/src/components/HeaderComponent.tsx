@@ -17,6 +17,8 @@ export function HeaderComponent({ component }: { component: HeaderComponent }) {
     <div 
       className="component-header px-3 py-2 font-semibold flex items-center gap-2"
       style={{
+        width: '100%',
+        height: '100%',
         backgroundColor: component.bgColor,
         color: component.textColor,
       }}
