@@ -7,7 +7,7 @@ Available presets: three_column, simple_node
 
 from pynodewidget import NodeFlowWidget, GridBuilder
 from pynodewidget.models import (
-    LabeledHandle, ButtonHandle, TextField, NumberField, 
+    LabeledHandle, TextField, NumberField, BaseHandle,
     BoolField, SelectField, HeaderComponent, DividerComponent
 )
 
@@ -52,8 +52,8 @@ grid_three_column_full = (
         HeaderComponent(id="header", label="Advanced Processor", icon="🚀")
     ])
     .slot("left", [
-        ButtonHandle(id="input1", handle_type="input", label="Input 1"),
-        ButtonHandle(id="input2", handle_type="input", label="Input 2"),
+        LabeledHandle(id="input1", handle_type="input", label="Input 1"),
+        LabeledHandle(id="input2", handle_type="input", label="Input 2"),
     ])
     .slot("center", [
         TextField(id="operation", value="transform"),
@@ -61,8 +61,8 @@ grid_three_column_full = (
         NumberField(id="iterations", value=100, min=1, max=1000),
     ])
     .slot("right", [
-        ButtonHandle(id="output1", handle_type="output", label="Primary"),
-        ButtonHandle(id="output2", handle_type="output", label="Secondary"),
+        LabeledHandle(id="output1", handle_type="output", label="Primary"),
+        LabeledHandle(id="output2", handle_type="output", label="Secondary"),
     ])
     .slot("footer", [
         BoolField(id="verbose", value=False),
@@ -87,13 +87,13 @@ grid_simple_node = (
         HeaderComponent(id="header", label="Transform Node", icon="🔄", bgColor="#4f46e5")
     ])
     .slot("input", [
-        ButtonHandle(id="input", handle_type="input", label="In"),
+        BaseHandle(id="input", handle_type="input", label="In"),
     ])
-    .slot("center", [
-        TextField(id="function", value="uppercase"),
-    ])
+    # .slot("center", [
+    #     TextField(id="function", value="uppercase"),
+    # ])
     .slot("output", [
-        ButtonHandle(id="output", handle_type="output", label="Out"),
+        BaseHandle(id="output", handle_type="output", label="Out"),
     ])
     .gap("0px")  # No gap between header and body for seamless look
     .build()
