@@ -40,9 +40,12 @@ export function GridCellComponent({
  * Get cell positioning style
  */
 function getCellStyle(cell: GridCell): React.CSSProperties {
+  const rowSpan = cell.coordinates.row_span || 1;
+  const colSpan = cell.coordinates.col_span || 1;
+    
   return {
-    gridRow: `${cell.coordinates.row} / span ${cell.coordinates.row_span || 1}`,
-    gridColumn: `${cell.coordinates.col} / span ${cell.coordinates.col_span || 1}`,
+    gridRow: `${cell.coordinates.row} / span ${rowSpan}`,
+    gridColumn: `${cell.coordinates.col} / span ${colSpan}`,
   };
 }
 
@@ -57,6 +60,8 @@ function getLayoutStyle(layout?: GridCell['layout']): React.CSSProperties {
       alignItems: layout?.align || "start",
       justifyContent: layout?.justify || "start",
       gap: layout?.gap || "4px",
+      height: "100%",
+      width: "100%",
     };
   }
 
@@ -66,6 +71,8 @@ function getLayoutStyle(layout?: GridCell['layout']): React.CSSProperties {
       gap: layout.gap || "4px",
       alignItems: layout.align || "start",
       justifyContent: layout.justify || "start",
+      height: "100%",
+      width: "100%",
     };
   }
 
@@ -74,6 +81,8 @@ function getLayoutStyle(layout?: GridCell['layout']): React.CSSProperties {
       display: "flex",
       flexDirection: "column",
       gap: layout.gap || "4px",
+      height: "100%",
+      width: "100%",
     };
   }
 

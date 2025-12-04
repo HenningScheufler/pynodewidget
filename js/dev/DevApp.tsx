@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ComponentPreview } from './components/ComponentPreview';
 import { NodeEditor } from './components/NodeEditor';
+import { GridSpanningGallery } from './components/GridSpanningGallery';
 import { TabButton } from './components/TabButton';
 import '../src/style.css';
 
-type TabType = 'editor' | 'preview';
+type TabType = 'editor' | 'preview' | 'spanning';
 
 export function DevApp() {
   const [activeTab, setActiveTab] = useState<TabType>('editor');
@@ -34,10 +35,22 @@ export function DevApp() {
           isActive={activeTab === 'preview'}
           onClick={() => setActiveTab('preview')}
         />
+        <TabButton
+          label="Grid Spanning"
+          icon="📐"
+          isActive={activeTab === 'spanning'}
+          onClick={() => setActiveTab('spanning')}
+        />
       </div>
 
       <div>
-        {activeTab === 'editor' ? <NodeEditor /> : <ComponentPreview />}
+        {activeTab === 'editor' ? (
+          <NodeEditor />
+        ) : activeTab === 'preview' ? (
+          <ComponentPreview />
+        ) : (
+          <GridSpanningGallery />
+        )}
       </div>
     </div>
   );

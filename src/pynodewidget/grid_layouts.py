@@ -33,11 +33,6 @@ from pynodewidget.models import (
     SelectField,
 )
 
-
-# Type aliases
-ContentArea = Literal["inputs", "outputs", "parameters"]
-
-
 # =============================================================================
 # NEW THREE-LAYER GRID HELPERS
 # =============================================================================

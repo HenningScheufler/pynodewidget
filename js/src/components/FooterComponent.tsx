@@ -17,6 +17,8 @@ export function FooterComponent({ component }: { component: FooterComponent }) {
     <div 
       className={`component-footer px-3 py-2 text-xs text-muted-foreground border-t ${component.className || ''}`}
       style={{
+        width: '100%',
+        height: '100%',
         backgroundColor: component.bgColor,
         color: component.textColor,
       }}

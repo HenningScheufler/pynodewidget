@@ -100,6 +100,7 @@ nav:
     - Overview: guides/index.md
     - Creating Custom Nodes: guides/custom-nodes.md
     - Styling Nodes: guides/styling.md
+    - Grid Layouts: guides/grid-layouts.md
     - Conditional Fields: guides/conditional-fields.md
     - Handle Types: guides/handles.md
     - Working with Values: guides/values.md
@@ -115,6 +116,7 @@ nav:
   - Developer Guide:
     - Overview: developer/index.md
     - Architecture: developer/architecture.md
+    - Layout System: developer/layout.md
     - Extension Guide: developer/extending.md
     - JavaScript Development: developer/javascript.md
     - Hooks API: developer/hooks.md

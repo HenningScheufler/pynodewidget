@@ -60,8 +60,8 @@ export function NumberField(props: NumberFieldComponentProps) {
     const displayLabel = component.label ?? inferLabelFromId(component.id);
     
     return (
-      <div className="component-number-field">
-        <label className="text-xs text-gray-600 mb-1">{displayLabel}</label>
+      <div className="component-number-field w-full flex flex-col gap-1">
+        <label className="text-xs text-gray-600">{displayLabel}</label>
         <Input
           type="number"
           value={currentValue}
@@ -71,7 +71,7 @@ export function NumberField(props: NumberFieldComponentProps) {
           onPointerDownCapture={(e) => e.stopPropagation()}
           onWheel={(e) => e.currentTarget.blur()}
           aria-label={displayLabel}
-          className="h-8 text-xs"
+          className="h-8 text-xs w-full"
         />
       </div>
     );

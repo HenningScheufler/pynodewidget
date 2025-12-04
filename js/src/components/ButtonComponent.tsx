@@ -25,6 +25,8 @@ export const ButtonComponentSchema = v.object({
     v.literal("icon"),
   ])),
   disabled: v.optional(v.boolean()),
+  bgColor: v.optional(v.string()),
+  textColor: v.optional(v.string()),
 });
 
 export type ButtonComponent = v.InferOutput<typeof ButtonComponentSchema>;
@@ -55,6 +57,12 @@ export function ButtonComponent({ component, onValueChange }: ButtonComponentPro
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       className="w-full"
+      style={{
+        backgroundColor: component.bgColor,
+        color: component.textColor,
+        width: '100%',
+        height: '100%',
+      }}
     >
       {component.label}
     </Button>

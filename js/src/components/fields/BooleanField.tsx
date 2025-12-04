@@ -34,7 +34,7 @@ export function BooleanField(props: BooleanFieldComponentProps) {
     const currentValue = (context?.nodeData.values?.[component.id] as boolean) ?? component.value ?? false;
     
     return (
-      <div className="component-bool-field flex items-center gap-2">
+      <div className="component-bool-field w-full flex items-center gap-2">
         <Checkbox
           checked={currentValue}
           onCheckedChange={(checked) => onValueChange?.(component.id, checked === true)}
