@@ -496,9 +496,9 @@ from pynodewidget import GridBuilder, PRESETS
 # Using presets (easiest)
 grid = (
     GridBuilder()
-    .preset(PRESETS.header_body)
+    .preset(PRESETS.three_column)
     .slot("header", HeaderComponent(id="header", label="Title"))
-    .slot("body", TextField(id="content", label="Content"))
+    .slot("center", TextField(id="content", label="Content"))
     .build()
 )
 
@@ -536,10 +536,8 @@ grid = GridBuilder().row(
 - ✅ 60-70% less code
 
 **Available presets:**
-- `PRESETS.header_body` - Header + body sections
-- `PRESETS.three_column` - Three equal columns
-- `PRESETS.sidebar` - Fixed sidebar + content
-- `PRESETS.holy_grail` - Header + 3 columns + footer
+- `PRESETS.three_column` - Three-column layout with optional header/footer
+- `PRESETS.simple_node` - Minimal node with header and centered handles
 
 See the [Grid Layouts User Guide](../guides/grid-layouts.md) for complete documentation.
 

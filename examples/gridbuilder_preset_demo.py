@@ -2,7 +2,7 @@
 """GridBuilder Preset Examples for VS Code
 
 This demo shows how to use GridBuilder presets to create layouts with minimal code.
-Available presets: three_column, holy_grail, sidebar, header_body
+Available presets: three_column, simple_node
 """
 
 from pynodewidget import NodeFlowWidget, GridBuilder
@@ -43,11 +43,11 @@ widget.add_node_type(
 )
 
 # %%
-# Example 2: Holy Grail Preset (Header + Sidebar Layout)
-# Best for complex nodes with header, multiple sections, and footer
+# Example 2: Three Column with Header and Footer
+# Best for complex nodes with header, three-column layout, and footer
 
-grid_holy_grail = (
-    GridBuilder.preset("holy_grail")
+grid_three_column_full = (
+    GridBuilder.preset("three_column")
     .slot("header", [
         HeaderComponent(id="header", label="Advanced Processor", icon="🚀")
     ])
@@ -55,7 +55,7 @@ grid_holy_grail = (
         ButtonHandle(id="input1", handle_type="input", label="Input 1"),
         ButtonHandle(id="input2", handle_type="input", label="Input 2"),
     ])
-    .slot("main", [
+    .slot("center", [
         TextField(id="operation", value="transform"),
         SelectField(id="mode", value="fast", options=["fast", "accurate", "balanced"]),
         NumberField(id="iterations", value=100, min=1, max=1000),
@@ -71,61 +71,39 @@ grid_holy_grail = (
 )
 
 widget.add_node_type(
-    type_name="holy_grail_processor",
-    label="Holy Grail Layout",
+    type_name="three_column_full",
+    label="Three Column with Header/Footer",
     icon="🏛️",
-    grid_layout=grid_holy_grail
+    grid_layout=grid_three_column_full
 )
 
 # %%
-# Example 3: Sidebar Preset (Compact Two-Column)
-# Great for nodes with side controls and main content area
+# Example 3: Simple Node Preset (Minimal Layout)
+# Perfect for basic nodes with header, single field, and input/output handles
 
-grid_sidebar = (
-    GridBuilder.preset("sidebar")
-    .slot("sidebar", [
-        LabeledHandle(id="input", handle_type="input"),
-        LabeledHandle(id="output", handle_type="output"),
-    ])
-    .slot("main", [
-        TextField(id="title", value="Processor Node"),
-        NumberField(id="value", value=0),
-        SelectField(id="type", value="standard", options=["standard", "advanced"]),
-    ])
-    .build()
-)
-
-widget.add_node_type(
-    type_name="sidebar_processor",
-    label="Sidebar Layout",
-    icon="📱",
-    grid_layout=grid_sidebar
-)
-
-# %%
-# Example 4: Header-Body Preset (Clean Vertical Layout)
-# Perfect for nodes with a title area and main content
-
-grid_header_body = (
-    GridBuilder.preset("header_body")
+grid_simple_node = (
+    GridBuilder.preset("simple_node")
     .slot("header", [
         HeaderComponent(id="header", label="Transform Node", icon="🔄", bgColor="#4f46e5")
     ])
-    .slot("body", [
-        LabeledHandle(id="input", handle_type="input"),
+    .slot("input", [
+        ButtonHandle(id="input", handle_type="input", label="In"),
+    ])
+    .slot("center", [
         TextField(id="function", value="uppercase"),
-        NumberField(id="repeat", value=1, min=1, max=10),
-        LabeledHandle(id="output", handle_type="output"),
+    ])
+    .slot("output", [
+        ButtonHandle(id="output", handle_type="output", label="Out"),
     ])
     .gap("0px")  # No gap between header and body for seamless look
     .build()
 )
 
 widget.add_node_type(
-    type_name="header_body_processor",
-    label="Header-Body Layout",
+    type_name="simple_transform",
+    label="Simple Node Layout",
     icon="📄",
-    grid_layout=grid_header_body
+    grid_layout=grid_simple_node
 )
 
 # %%

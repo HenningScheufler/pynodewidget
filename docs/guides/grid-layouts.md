@@ -7,7 +7,7 @@ Build complex node layouts efficiently using the GridBuilder API, which reduces 
 GridBuilder provides a fluent API for creating CSS grid layouts within nodes. Instead of manually constructing `NodeGrid`, `GridCell`, and `GridCoordinates` objects, you can use a chainable builder pattern with preset templates for common layouts.
 
 **Key features:**
-- 🎨 **Preset layouts**: Ready-to-use templates (three-column, holy-grail, sidebar, header-body)
+- 🎨 **Preset layouts**: Ready-to-use templates (three_column, simple_node)
 - 🔧 **Fluent API**: Chainable methods for readable code
 - 📐 **Row/column helpers**: Convenient methods for horizontal and vertical layouts
 - ⚡ **Reduced boilerplate**: 60-70% less code than manual construction
@@ -32,12 +32,12 @@ class DashboardNode(JsonSchemaNodeWidget):
     parameters = Params
     icon = "📊"
     
-    # Header-body preset
+    # Three-column preset
     grid = (
         GridBuilder()
-        .preset(PRESETS.header_body)
+        .preset(PRESETS.three_column)
         .slot("header", HeaderComponent(id="header", label="Settings"))
-        .slot("body", TextField(id="notes", label="Notes", multiline=True))
+        .slot("center", TextField(id="notes", label="Notes", multiline=True))
         .build()
     )
 ```
@@ -74,122 +74,91 @@ class CustomNode(JsonSchemaNodeWidget):
 
 ## Preset Layouts
 
-GridBuilder includes four common layout presets:
+GridBuilder includes two common layout presets:
 
-### 1. Header-Body
+### 1. Three-Column
 
-Two-row layout with header and body sections.
+Three-column layout with optional header and footer.
 
 ```python
 from pynodewidget import GridBuilder, PRESETS
 
-grid = (
-    GridBuilder()
-    .preset(PRESETS.header_body)
-    .slot("header", HeaderComponent(id="header", label="Node Title"))
-    .slot("body", TextField(id="content", label="Content"))
-    .build()
-)
-```
-
-**Structure:**
-```
-┌─────────────────┐
-│     Header      │  60px
-├─────────────────┤
-│                 │
-│      Body       │  1fr (fills space)
-│                 │
-└─────────────────┘
-```
-
-**Slot names:** `"header"`, `"body"`
-
-### 2. Three-Column
-
-Three equal-width columns.
-
-```python
+# Basic three-column layout
 grid = (
     GridBuilder()
     .preset(PRESETS.three_column)
-    .slot("left", TextField(id="left", label="Left"))
-    .slot("center", TextField(id="center", label="Center"))
-    .slot("right", TextField(id="right", label="Right"))
+    .slot("left", LabeledHandle(id="input", handle_type="input"))
+    .slot("center", TextField(id="content", label="Content"))
+    .slot("right", LabeledHandle(id="output", handle_type="output"))
+    .build()
+)
+
+# With optional header and footer
+grid = (
+    GridBuilder()
+    .preset(PRESETS.three_column)
+    .slot("header", HeaderComponent(id="header", label="Node Title"))
+    .slot("left", LabeledHandle(id="input", handle_type="input"))
+    .slot("center", TextField(id="content", label="Content"))
+    .slot("right", LabeledHandle(id="output", handle_type="output"))
+    .slot("footer", BoolField(id="enabled", value=True))
     .build()
 )
 ```
 
-**Structure:**
+**Structure (basic):**
 ```
 ┌──────┬──────┬──────┐
 │      │      │      │
 │ Left │Center│Right │  1fr
 │      │      │      │
 └──────┴──────┴──────┘
-   1fr    1fr    1fr
+  auto    1fr    auto
 ```
 
-**Slot names:** `"left"`, `"center"`, `"right"`
+**Structure (with header/footer):**
+```
+┌─────────────────────┐
+│       Header        │  auto
+├──────┬──────┬───────┤
+│      │      │       │
+│ Left │Center│ Right │  1fr
+│      │      │       │
+├──────┴──────┴───────┤
+│       Footer        │  auto
+└─────────────────────┘
+  auto    1fr    auto
+```
 
-### 3. Sidebar
+**Slot names:** `"left"`, `"center"`, `"right"`, `"header"` (optional), `"footer"` (optional)
 
-Fixed-width sidebar with flexible content area.
+### 2. Simple Node
+
+Minimal node layout with header and centered input/output handles.
 
 ```python
 grid = (
     GridBuilder()
-    .preset(PRESETS.sidebar)
-    .slot("sidebar", SelectField(id="mode", label="Mode", options=["auto", "manual"]))
-    .slot("content", TextField(id="data", label="Data", multiline=True))
+    .preset(PRESETS.simple_node)
+    .slot("header", HeaderComponent(id="header", label="Transform"))
+    .slot("input", ButtonHandle(id="in", handle_type="input"))
+    .slot("center", TextField(id="value", label="Value"))
+    .slot("output", ButtonHandle(id="out", handle_type="output"))
     .build()
 )
 ```
 
 **Structure:**
 ```
-┌────────┬─────────────┐
-│        │             │
-│Sidebar │   Content   │  1fr
-│        │             │
-└────────┴─────────────┘
-  200px        1fr
+┌─────────────────────┐
+│       Header        │  auto
+├──────┬──────┬───────┤
+│  In  │ Value│  Out  │  1fr
+└──────┴──────┴───────┘
+  auto    1fr    auto
 ```
 
-**Slot names:** `"sidebar"`, `"content"`
-
-### 4. Holy Grail
-
-Classic layout with header, three columns, and footer.
-
-```python
-grid = (
-    GridBuilder()
-    .preset(PRESETS.holy_grail)
-    .slot("header", HeaderComponent(id="header", label="Title"))
-    .slot("left_sidebar", TextField(id="nav", label="Navigation"))
-    .slot("content", TextField(id="main", label="Main Content", multiline=True))
-    .slot("right_sidebar", TextField(id="tools", label="Tools"))
-    .slot("footer", ButtonHandle(id="save", label="Save", action="save"))
-    .build()
-)
-```
-
-**Structure:**
-```
-┌──────────────────────────┐
-│         Header           │  60px
-├──────┬─────────┬─────────┤
-│      │         │         │
-│ Left │ Content │  Right  │  1fr
-│      │         │         │
-├──────┴─────────┴─────────┤
-│         Footer           │  40px
-└──────────────────────────┘
-  200px     1fr     200px
-```
-
-**Slot names:** `"header"`, `"left_sidebar"`, `"content"`, `"right_sidebar"`, `"footer"`
+**Slot names:** `"header"`, `"input"`, `"center"`, `"output"`
 
 ## Row and Column Helpers
 
@@ -634,9 +603,9 @@ from pynodewidget import GridBuilder, PRESETS
 
 grid = (
     GridBuilder()
-    .preset(PRESETS.header_body)
+    .preset(PRESETS.three_column)
     .slot("header", HeaderComponent(id="header", label="Title"))
-    .slot("body", TextField(id="content", label="Content"))
+    .slot("center", TextField(id="content", label="Content"))
     .build()
 )
 ```
@@ -656,10 +625,10 @@ Use presets for standard layouts before building custom grids:
 
 ```python
 # ✅ Good: Use preset when it fits
-grid = GridBuilder().preset(PRESETS.header_body)...
+grid = GridBuilder().preset(PRESETS.three_column)...
 
 # ❌ Avoid: Rebuilding common layouts manually
-grid = GridBuilder().rows(["60px", "1fr"]).cols(["1fr"])...
+grid = GridBuilder().rows(["auto", "1fr", "auto"]).cols(["auto", "1fr", "auto"])...
 ```
 
 ### 2. Use row() and col() for Linear Layouts
@@ -791,18 +760,18 @@ GridBuilder().rows([...]).cols([...])  # gap defaults to "0"
 
 **Solutions:**
 - Check preset documentation for correct slot names
-- Use `PRESETS.header_body`, `PRESETS.three_column`, etc.
+- Use `PRESETS.three_column`, `PRESETS.simple_node`
 - Verify spelling of slot names
 
 ```python
 # ✅ Correct
-.preset(PRESETS.header_body)
-.slot("header", ...)
-.slot("body", ...)
+.preset(PRESETS.three_column)
+.slot("left", ...)
+.slot("center", ...)
 
 # ❌ Wrong slot name
-.preset(PRESETS.header_body)
-.slot("title", ...)  # Should be "header"
+.preset(PRESETS.three_column)
+.slot("middle", ...)  # Should be "center"
 ```
 
 ## API Reference
@@ -813,7 +782,7 @@ GridBuilder().rows([...]).cols([...])  # gap defaults to "0"
 Apply a preset configuration.
 
 **Parameters:**
-- `preset`: One of `PRESETS.header_body`, `PRESETS.three_column`, `PRESETS.sidebar`, `PRESETS.holy_grail`
+- `preset`: One of `PRESETS.three_column`, `PRESETS.simple_node`
 
 **Returns:** Self (for chaining)
 

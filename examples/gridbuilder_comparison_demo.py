@@ -97,7 +97,7 @@ widget.add_node_type(
 # NEW WAY: GridBuilder with preset (~15 lines - 70% reduction!)
 
 grid_new_preset = (
-    GridBuilder.preset("holy_grail")
+    GridBuilder.preset("three_column")
     .slot("header", [
         HeaderComponent(id="header", label="Data Processor", icon="⚙️")
     ])
@@ -105,7 +105,7 @@ grid_new_preset = (
         LabeledHandle(id="input1", handle_type="input", label="Input 1"),
         LabeledHandle(id="input2", handle_type="input", label="Input 2"),
     ])
-    .slot("main", [
+    .slot("center", [
         TextField(id="name", value="Processor Node"),
         NumberField(id="threshold", value=50, min=0, max=100),
         BoolField(id="enabled", value=True),

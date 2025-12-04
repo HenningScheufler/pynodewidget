@@ -55,7 +55,7 @@ class GridBuilder:
         """Create a GridBuilder using a preset layout.
         
         Args:
-            preset_name: Name of preset ("three_column", "holy_grail", "sidebar", "header_body")
+            preset_name: Name of preset ("three_column", "simple_node")
             
         Returns:
             GridBuilder instance configured with preset
@@ -64,10 +64,19 @@ class GridBuilder:
             ValueError: If preset_name is not recognized
             
         Example:
+            >>> # Three column preset with optional header/footer
             >>> grid = (GridBuilder.preset("three_column")
             ...     .slot("left", [InputHandle(id="in1")])
             ...     .slot("center", [TextField(id="name")])
             ...     .slot("right", [OutputHandle(id="out1")])
+            ...     .build())
+            
+            >>> # Simple node preset with header
+            >>> grid = (GridBuilder.preset("simple_node")
+            ...     .slot("header", [HeaderComponent(id="h1")])
+            ...     .slot("input", [ButtonHandle(id="in1")])
+            ...     .slot("center", [TextField(id="name")])
+            ...     .slot("output", [ButtonHandle(id="out1")])
             ...     .build())
         """
         if preset_name not in PRESETS:

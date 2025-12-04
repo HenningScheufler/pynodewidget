@@ -75,65 +75,39 @@ class PresetConfig:
 PRESETS = {
     "three_column": PresetConfig(
         name="three_column",
-        rows=["1fr"],
-        columns=["auto", "1fr", "auto"],
-        slot_mappings={
-            "left": (1, 1, 1, 1),
-            "center": (1, 2, 1, 1),
-            "right": (1, 3, 1, 1),
-        },
-        default_layouts={
-            "left": {"type": "flex", "direction": "column", "align": "stretch", "gap": "8px"},
-            "center": {"type": "flex", "direction": "column", "gap": "12px"},
-            "right": {"type": "flex", "direction": "column", "align": "stretch", "gap": "8px"},
-        }
-    ),
-    
-    "holy_grail": PresetConfig(
-        name="holy_grail",
         rows=["auto", "1fr", "auto"],
         columns=["auto", "1fr", "auto"],
         slot_mappings={
             "header": (1, 1, 1, 3),
             "left": (2, 1, 1, 1),
-            "main": (2, 2, 1, 1),
+            "center": (2, 2, 1, 1),
             "right": (2, 3, 1, 1),
             "footer": (3, 1, 1, 3),
         },
         default_layouts={
             "header": {"type": "flex", "direction": "row", "justify": "space-between", "align": "center", "gap": "8px"},
             "left": {"type": "flex", "direction": "column", "align": "stretch", "gap": "8px"},
-            "main": {"type": "flex", "direction": "column", "gap": "12px"},
+            "center": {"type": "flex", "direction": "column", "gap": "12px"},
             "right": {"type": "flex", "direction": "column", "align": "stretch", "gap": "8px"},
             "footer": {"type": "flex", "direction": "row", "justify": "center", "gap": "8px"},
         }
     ),
     
-    "sidebar": PresetConfig(
-        name="sidebar",
-        rows=["1fr"],
-        columns=["auto", "1fr"],
-        slot_mappings={
-            "sidebar": (1, 1, 1, 1),
-            "main": (1, 2, 1, 1),
-        },
-        default_layouts={
-            "sidebar": {"type": "flex", "direction": "column", "align": "stretch", "gap": "8px"},
-            "main": {"type": "flex", "direction": "column", "gap": "12px"},
-        }
-    ),
-    
-    "header_body": PresetConfig(
-        name="header_body",
+    "simple_node": PresetConfig(
+        name="simple_node",
         rows=["auto", "1fr"],
-        columns=["1fr"],
+        columns=["auto", "1fr", "auto"],
         slot_mappings={
-            "header": (1, 1, 1, 1),
-            "body": (2, 1, 1, 1),
+            "header": (1, 1, 1, 3),
+            "input": (2, 1, 1, 1),
+            "center": (2, 2, 1, 1),
+            "output": (2, 3, 1, 1),
         },
         default_layouts={
             "header": {"type": "flex", "direction": "row", "justify": "space-between", "align": "center", "gap": "8px"},
-            "body": {"type": "flex", "direction": "column", "gap": "8px"},
+            "input": {"type": "flex", "direction": "column", "align": "center", "justify": "center", "gap": "4px"},
+            "center": {"type": "flex", "direction": "column", "gap": "8px"},
+            "output": {"type": "flex", "direction": "column", "align": "center", "justify": "center", "gap": "4px"},
         }
     ),
 }
