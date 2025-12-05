@@ -1,0 +1,17 @@
+/* Reduce code block font size for better readability */
+.highlight code,
+.codehilite code,
+pre code {
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+/* Inline code font size */
+code {
+  font-size: 0.875em;
+}
+
+/* Specifically target code blocks in content */
+.md-typeset pre > code {
+  font-size: 0.85em;
+}
