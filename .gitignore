@@ -13,6 +13,9 @@ coverage_html
 # Virtual environments
 .venv
 
+
+# notebooks
+__marimo__
 #docs
 site/
 
