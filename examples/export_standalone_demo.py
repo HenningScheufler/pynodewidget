@@ -51,7 +51,7 @@ def create_data_processing_workflow():
     )
     
     widget.add_node_type(
-        type_name="data_source",
+        type_name="default",
         label="Data Source",
         icon="📂",
         grid_layout=grid_source

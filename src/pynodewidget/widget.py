@@ -7,6 +7,21 @@ from typing import List, Dict, Any, Optional, Type, Set
 import json
 from .observable_dict import ObservableDict, ObservableDictTrait
 
+# Reserved node type names in ReactFlow that should not be used as custom node types
+# Using these names causes rendering issues and layout problems because ReactFlow
+# has built-in node types with these names. When you try to use them, ReactFlow
+# falls back to its default rendering instead of using your custom layout.
+#
+# - 'input': ReactFlow's built-in input node (for data sources)
+# - 'output': ReactFlow's built-in output node (for data sinks)  
+# - 'default': ReactFlow's default node type
+# - 'group': ReactFlow's group node for containing other nodes
+#
+# If validation blocks your preferred name, use alternatives like:
+#   'output' → 'output_node', 'data_output', 'sink', 'destination'
+#   'input' → 'input_node', 'data_input', 'source'
+RESERVED_NODE_TYPES = {'input', 'output', 'default', 'group'}
+
 
 def _to_plain_dict(obj):
     """Recursively convert ObservableDict to plain dict for serialization."""
@@ -188,6 +203,9 @@ class NodeFlowWidget(anywidget.AnyWidget):
         Returns:
             Self for method chaining
             
+        Raises:
+            ValueError: If type_name is reserved by ReactFlow
+            
         Example:
             >>> from pynodewidget.grid_layouts import create_three_column_grid
             >>> from pynodewidget.models import ButtonHandle, NumberField
@@ -206,6 +224,14 @@ class NodeFlowWidget(anywidget.AnyWidget):
             >>> # Access values with Pythonic dict syntax
             >>> widget.values["processor-1"]["value"] = 50
         """
+        # Check for reserved node type names
+        if type_name.lower() in RESERVED_NODE_TYPES:
+            raise ValueError(
+                f"Node type name '{type_name}' is reserved by ReactFlow and cannot be used. "
+                f"Reserved names are: {', '.join(sorted(RESERVED_NODE_TYPES))}. "
+                f"Please use a different name like '{type_name}_node' or 'data_{type_name}'."
+            )
+        
         from .models import NodeGrid
         
         # Convert NodeGrid model to dict if needed
