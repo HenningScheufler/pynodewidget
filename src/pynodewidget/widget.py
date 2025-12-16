@@ -616,7 +616,7 @@ class NodeFlowWidget(anywidget.AnyWidget):
             if css_path.exists():
                 shutil.copy(css_path, output_dir / "standalone.css")
         
-        print(f"✓ HTML exported to {filename}")
+        print(f"HTML exported to {filename}")
         return str(filename)
     
     def export_image(

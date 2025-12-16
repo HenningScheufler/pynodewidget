@@ -329,22 +329,7 @@ print()
 # Also export as JSON for comparison
 print("Exporting workflow as JSON...")
 widget.export_json("workflow.json")
-print()
 
-print("=" * 70)
-print("Export Complete!")
-print("=" * 70)
-print()
-print("Generated files:")
-print("  • workflow_interactive.html    - Interactive, embedded assets")
-print("  • workflow_static.html         - View-only, embedded assets")
-print("  • workflow_fullscreen.html     - Full-screen interactive view")
-print("  • workflow_separate_assets.html - Interactive with separate JS/CSS")
-print("  • workflow.json                - Raw workflow data")
-print()
-print("Open any HTML file in your browser to view the workflow!")
-print("The HTML files are self-contained and work without Python/Jupyter.")
-print()
 
 
 
