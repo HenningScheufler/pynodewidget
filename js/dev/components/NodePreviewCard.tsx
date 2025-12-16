@@ -82,34 +82,34 @@ export function NodePreviewCard({ combo, sampleNodeData, showSelected }: NodePre
       </div>
       <div className="w-[500px] h-[450px]">
         <ReactFlowProvider>
-          <SetNodeValuesContext.Provider value={setNodeValues}>
-            <ReactFlow
-              nodes={[{
-                id: nodeId,
-                type: 'preview',
-                position: { x: 100, y: 50 },
-                data: {
-                  label: combo.label,
-                  grid: nodeGrid,
-                  style: { minWidth: 280, ...combo.layout.definition.style },
-                  values: combo.layout.defaultValues || {}
-                }
-              }]}
-              edges={[]}
-              nodeTypes={nodeTypes}
-              fitView
-              fitViewOptions={{ padding: 0.5, minZoom: 1, maxZoom: 1 }}
-              nodesDraggable={false}
-              nodesConnectable={true}
-              elementsSelectable={showSelected}
-              panOnDrag={false}
-              zoomOnScroll={false}
-              zoomOnPinch={false}
-              zoomOnDoubleClick={false}
-              preventScrolling={false}
-              className="bg-background/50"
-            />
-          </SetNodeValuesContext.Provider>
+            <SetNodeValuesContext.Provider value={setNodeValues}>
+              <ReactFlow
+                nodes={[{
+                  id: nodeId,
+                  type: 'preview',
+                  position: { x: 100, y: 50 },
+                  data: {
+                    label: combo.label,
+                    grid: nodeGrid,
+                    style: { minWidth: 280, ...combo.layout.definition.style },
+                    values: combo.layout.defaultValues || {}
+                  }
+                }]}
+                edges={[]}
+                nodeTypes={nodeTypes}
+                fitView
+                fitViewOptions={{ padding: 0.5, minZoom: 1, maxZoom: 1 }}
+                nodesDraggable={false}
+                nodesConnectable={true}
+                elementsSelectable={showSelected}
+                panOnDrag={false}
+                zoomOnScroll={false}
+                zoomOnPinch={false}
+                zoomOnDoubleClick={false}
+                preventScrolling={false}
+                className="bg-background/50"
+              />
+            </SetNodeValuesContext.Provider>
         </ReactFlowProvider>
       </div>
     </Card>

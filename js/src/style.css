@@ -126,15 +126,34 @@
   min-height: 400px;
 }
 
-/* React Flow Custom Handles */
-.react-flow__handle {
-  width: 12px;
-  height: 12px;
-  background: hsl(var(--primary));
-  border: 2px solid white;
+/* React Flow Node Wrapper - remove default sizing */
+.react-flow .react-flow__node {
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
 }
 
-.react-flow__handle:hover {
+/* Ensure Card fills the node */
+.react-flow .react-flow__node > * {
+  display: block;
+}
+
+/* React Flow Custom Handles - positioned within grid */
+/* Use high specificity to override ReactFlow defaults */
+.react-flow .react-flow__node .react-flow__handle {
+  background: hsl(var(--primary));
+  border: 2px solid white;
+  width: 12px;
+  height: 12px;
+}
+
+/* CRITICAL: Override positioning - must come after all other handle styles */
+.react-flow .react-flow__nodes .react-flow__node .react-flow__handle {
+  position: static !important;
+  transform: none !important;
+}
+
+.react-flow .react-flow__node .react-flow__handle:hover {
   background: hsl(var(--primary) / 0.8);
 }
 

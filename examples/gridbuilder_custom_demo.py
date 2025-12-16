@@ -171,7 +171,7 @@ grid_complex = (
         LabeledHandle(id="out2", handle_type="output"),
     ], layout_type="flex", direction="column", align="stretch", gap="8px")
     .cell(3, 1,
-        components=[ButtonComponent(id="btn1", label="Action", action="execute", variant="default")],
+        components=[ButtonComponent(id="btn1", label="Action", variant="default")],
         col_span=3,  # Footer button spans all columns
         layout_type="flex",
         direction="row",
@@ -268,7 +268,7 @@ grid_sections = (
     .cell(3, 1,
         components=[
             DividerComponent(id="div2"),
-            ButtonComponent(id="apply", label="Apply Settings", action="apply", variant="default"),
+            ButtonComponent(id="apply", label="Apply Settings", variant="default"),
         ],
         layout_type="flex",
         direction="column",

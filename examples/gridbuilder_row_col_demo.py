@@ -107,7 +107,7 @@ grid_mixed = (
         SelectField(id="format", value="png", options=["png", "jpg", "webp"]),
         BoolField(id="compress", value=True)
     )
-    .row(4, ButtonComponent(id="process_btn", label="Process Image", action="process", variant="default"))
+    .row(4, ButtonComponent(id="process_btn", label="Process Image", variant="default"))
     .gap("10px")
     .build()
 )
@@ -132,7 +132,7 @@ grid_form = (
     .row(5, NumberField(id="age", value=18, min=13, max=120))
     .row(6, SelectField(id="country", value="US", options=["US", "UK", "DE", "FR", "JP"]))
     .row(7, BoolField(id="terms", value=False))
-    .row(8, ButtonComponent(id="submit", label="Register", action="register", variant="default"))
+    .row(8, ButtonComponent(id="submit", label="Register", variant="default"))
     .gap("6px")
     .build()
 )

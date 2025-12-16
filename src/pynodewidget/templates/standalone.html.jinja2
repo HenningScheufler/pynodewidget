@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+        
+        #pynodewidget-root {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 1.2rem;
+            color: #666;
+        }
+    </style>
+    {% if embed_css %}
+    <style>
+{{ css_content }}
+    </style>
+    {% else %}
+    <link rel="stylesheet" href="standalone.css">
+    {% endif %}
+</head>
+<body>
+    <div id="pynodewidget-root">
+        <div class="loading">Loading workflow visualization...</div>
+    </div>
+    
+    <!-- Embedded workflow data -->
+    <script id="pynodewidget-data" type="application/json">
+{{ flow_data }}
+    </script>
+    
+    <!-- Bundle script -->
+    {% if embed_js %}
+    <script>
+{{ js_content }}
+    </script>
+    {% else %}
+    <script src="standalone.iife.js"></script>
+    {% endif %}
+</body>
+</html>

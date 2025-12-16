@@ -42,6 +42,14 @@ class BunBuildHook(BuildHookInterface):
             check=True,
         )
 
+        # Run bun build for standalone bundle
+        print("Building standalone IIFE bundle with bun...")
+        subprocess.run(
+            ["bun", "run", "vite", "build", "--config", "vite.config.standalone.ts"],
+            cwd=js_dir,
+            check=True,
+        )
+
         # Create static directory if it doesn't exist
         static_dir.mkdir(parents=True, exist_ok=True)
 
