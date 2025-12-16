@@ -1,23 +1,25 @@
 # Import and Export
 
-Save and load workflows with JSON serialization.
+Save and load workflows with JSON serialization, or export as standalone HTML for visualization.
 
 ## Overview
 
-PyNodeWidget workflows can be **exported to JSON** for:
+PyNodeWidget workflows can be **exported** in multiple formats:
 
-- **Persistence**: Save workflows between sessions
-- **Sharing**: Share workflows with others
-- **Version control**: Track workflow changes in git
-- **Templates**: Create reusable workflow templates
-- **Backup**: Archive workflow configurations
-
-The exported JSON includes:
+### JSON Export
+For **persistence, sharing, and version control**:
 - Nodes (configuration, position, type)
 - Edges (connections between nodes)
 - Node values (current field values)
 - Viewport (zoom and pan state)
 - Node templates (registered node types)
+
+### HTML Export
+For **visualization and documentation** (no Python/Jupyter required):
+- Standalone HTML files that work in any web browser
+- Interactive or static (view-only) modes
+- Self-contained with embedded JavaScript and CSS
+- Perfect for sharing DAG visualizations, documentation, and reports
 
 ## Basic Export/Import
 
@@ -520,6 +522,254 @@ subgraph = {
 # Save
 with open("subgraph.json", "w") as f:
     json.dump(subgraph, f, indent=2)
+```
+
+## HTML Export (Static Visualization)
+
+Export workflows as **standalone HTML files** for visualization without Python or Jupyter. Perfect for:
+
+- **Documentation**: Include interactive DAG visualizations in reports
+- **Sharing**: Send workflow visualizations to non-technical stakeholders
+- **Publishing**: Embed on websites or wikis
+- **Presentations**: Show workflow architecture in presentations
+
+### Basic HTML Export
+
+```python
+from pynodewidget import NodeFlowWidget
+
+flow = NodeFlowWidget()
+
+# Build workflow...
+# ...
+
+# Export as interactive HTML
+flow.export_html("workflow.html")
+# ✓ HTML exported to workflow.html
+
+# Open in any web browser - no Python required!
+```
+
+### Interactive vs Static
+
+**Interactive Mode** (default): Users can pan, zoom, and interact with the visualization.
+
+```python
+# Interactive: users can pan, zoom, select nodes
+flow.export_html(
+    "workflow_interactive.html",
+    interactive=True  # Default
+)
+```
+
+**Static Mode**: View-only visualization, no interaction.
+
+```python
+# Static: view-only, no interaction
+flow.export_html(
+    "workflow_static.html",
+    interactive=False
+)
+```
+
+### Customization Options
+
+#### Custom Title
+
+```python
+flow.export_html(
+    "data_pipeline.html",
+    title="Data Processing Pipeline v2.0"
+)
+```
+
+#### Custom Height
+
+```python
+# Fixed height
+flow.export_html(
+    "workflow.html",
+    height="800px"
+)
+
+# Full viewport height
+flow.export_html(
+    "workflow.html",
+    height="100vh"
+)
+```
+
+#### Asset Embedding
+
+**Embedded Assets** (default): All JavaScript and CSS inline in single file.
+
+```python
+# Single self-contained HTML file
+flow.export_html(
+    "workflow.html",
+    embed_assets=True  # Default
+)
+```
+
+**Separate Assets**: JavaScript and CSS in separate files.
+
+```python
+# Creates: workflow.html, standalone.iife.js, standalone.css
+flow.export_html(
+    "workflow.html",
+    embed_assets=False
+)
+```
+
+### Complete Example
+
+```python
+from pynodewidget import NodeFlowWidget
+
+# Create workflow
+flow = NodeFlowWidget()
+
+# Add node types
+flow.add_node_type_from_schema(
+    json_schema={
+        "type": "object",
+        "properties": {
+            "input": {"type": "string", "default": "data.csv"}
+        }
+    },
+    type_name="data_source",
+    label="Data Source",
+    icon="📂"
+)
+
+flow.add_node_type_from_schema(
+    json_schema={
+        "type": "object",
+        "properties": {
+            "operation": {
+                "type": "string",
+                "enum": ["filter", "transform", "aggregate"]
+            }
+        }
+    },
+    type_name="processor",
+    label="Processor",
+    icon="⚙️"
+)
+
+# Add nodes
+flow.nodes = {
+    "source-1": {
+        "type": "data_source",
+        "position": {"x": 100, "y": 100},
+        "data": {}
+    },
+    "processor-1": {
+        "type": "processor",
+        "position": {"x": 400, "y": 100},
+        "data": {}
+    }
+}
+
+# Add edge
+flow.edges = [{
+    "id": "e1",
+    "source": "source-1",
+    "target": "processor-1"
+}]
+
+# Export multiple formats
+flow.export_html(
+    "pipeline_interactive.html",
+    title="Interactive Pipeline",
+    interactive=True
+)
+
+flow.export_html(
+    "pipeline_static.html",
+    title="Static Pipeline View",
+    interactive=False
+)
+
+flow.export_html(
+    "pipeline_fullscreen.html",
+    title="Fullscreen Pipeline",
+    height="100vh"
+)
+```
+
+### Use Cases
+
+#### Documentation
+
+```python
+# Export workflow for technical documentation
+flow.export_html(
+    "architecture/data_pipeline.html",
+    title="Data Pipeline Architecture",
+    height="800px",
+    interactive=True
+)
+```
+
+#### Presentations
+
+```python
+# Full-screen view for presentations
+flow.export_html(
+    "presentation/workflow_demo.html",
+    title="Workflow Demo",
+    height="100vh",
+    interactive=True  # Allow zoom during presentation
+)
+```
+
+#### Reports
+
+```python
+# Static view for PDF conversion
+flow.export_html(
+    "report/workflow_snapshot.html",
+    title="Workflow Snapshot - 2024-12-16",
+    interactive=False  # Static for consistent screenshots
+)
+```
+
+### Generic Export Method
+
+The `export()` method auto-detects format from file extension:
+
+```python
+# Auto-detects HTML format
+flow.export("workflow.html")  # → calls export_html()
+
+# Auto-detects JSON format
+flow.export("workflow.json")  # → calls export_json()
+
+# Explicit format
+flow.export("workflow.xyz", format="html")
+```
+
+### Browser Compatibility
+
+HTML exports work in all modern browsers:
+
+- ✅ Chrome/Edge (Chromium)
+- ✅ Firefox
+- ✅ Safari
+- ✅ Mobile browsers (iOS Safari, Chrome Mobile)
+
+**Requirements**: JavaScript must be enabled (standard for all modern browsers).
+
+### File Size
+
+| Mode | Typical Size |
+|------|-------------|
+| Interactive (embedded) | ~900KB - 1.5MB |
+| Interactive (separate) | ~10KB HTML + ~900KB JS |
+| Static (embedded) | ~900KB - 1.5MB |
+
+Size includes React, ReactFlow, and all dependencies bundled as single file.
 ```
 
 ## Best Practices

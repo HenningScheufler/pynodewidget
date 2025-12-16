@@ -7,6 +7,21 @@ from typing import List, Dict, Any, Optional, Type, Set
 import json
 from .observable_dict import ObservableDict, ObservableDictTrait
 
+# Reserved node type names in ReactFlow that should not be used as custom node types
+# Using these names causes rendering issues and layout problems because ReactFlow
+# has built-in node types with these names. When you try to use them, ReactFlow
+# falls back to its default rendering instead of using your custom layout.
+#
+# - 'input': ReactFlow's built-in input node (for data sources)
+# - 'output': ReactFlow's built-in output node (for data sinks)  
+# - 'default': ReactFlow's default node type
+# - 'group': ReactFlow's group node for containing other nodes
+#
+# If validation blocks your preferred name, use alternatives like:
+#   'output' → 'output_node', 'data_output', 'sink', 'destination'
+#   'input' → 'input_node', 'data_input', 'source'
+RESERVED_NODE_TYPES = {'input', 'output', 'default', 'group'}
+
 
 def _to_plain_dict(obj):
     """Recursively convert ObservableDict to plain dict for serialization."""
@@ -188,6 +203,9 @@ class NodeFlowWidget(anywidget.AnyWidget):
         Returns:
             Self for method chaining
             
+        Raises:
+            ValueError: If type_name is reserved by ReactFlow
+            
         Example:
             >>> from pynodewidget.grid_layouts import create_three_column_grid
             >>> from pynodewidget.models import ButtonHandle, NumberField
@@ -206,6 +224,14 @@ class NodeFlowWidget(anywidget.AnyWidget):
             >>> # Access values with Pythonic dict syntax
             >>> widget.values["processor-1"]["value"] = 50
         """
+        # Check for reserved node type names
+        if type_name.lower() in RESERVED_NODE_TYPES:
+            raise ValueError(
+                f"Node type name '{type_name}' is reserved by ReactFlow and cannot be used. "
+                f"Reserved names are: {', '.join(sorted(RESERVED_NODE_TYPES))}. "
+                f"Please use a different name like '{type_name}_node' or 'data_{type_name}'."
+            )
+        
         from .models import NodeGrid
         
         # Convert NodeGrid model to dict if needed
@@ -387,7 +413,8 @@ class NodeFlowWidget(anywidget.AnyWidget):
         
         Args:
             filename: Output filename
-            format: Export format ('json' or 'yaml'). If None, auto-detects from filename
+            format: Export format ('json', 'yaml', 'html', 'png', 'jpeg'). 
+                   If None, auto-detects from filename
             
         Returns:
             Path to the exported file
@@ -400,6 +427,8 @@ class NodeFlowWidget(anywidget.AnyWidget):
             return self.export_yaml(filename)
         elif format == 'json':
             return self.export_json(filename)
+        elif format in ('html', 'htm'):
+            return self.export_html(filename)
         elif format in ('png', 'jpeg'):
             return self.export_image(filename)
         else:
@@ -477,6 +506,118 @@ class NodeFlowWidget(anywidget.AnyWidget):
                 print(f"✓ Image saved to {filename}")
             except Exception as e:
                 print(f"✗ Failed to save image: {e}")
+    
+    def export_html(
+        self,
+        filename: str = "workflow.html",
+        title: str = "PyNodeWidget Workflow",
+        height: str = None,
+        interactive: bool = True,
+        embed_assets: bool = True
+    ) -> str:
+        """Export the current flow as a standalone HTML file.
+        
+        Generates a self-contained HTML file that can be viewed in any web browser
+        without requiring a Python runtime or Jupyter notebook. The HTML includes
+        the complete ReactFlow visualization with all nodes, edges, and templates.
+        
+        Args:
+            filename: Output HTML filename
+            title: Page title for the HTML document
+            height: Height of the visualization (e.g., "600px", "100vh"). 
+                   If None, uses widget's current height setting
+            interactive: If True, allows panning, zooming, and node manipulation.
+                        If False, creates a static view-only visualization
+            embed_assets: If True, inline all JavaScript and CSS into the HTML file
+                         for single-file portability. If False, keeps assets separate.
+            
+        Returns:
+            Path to the exported HTML file
+            
+        Examples:
+            >>> # Export with default settings (interactive, embedded)
+            >>> widget.export_html("workflow.html")
+            >>> 
+            >>> # Export static view-only version
+            >>> widget.export_html("workflow.html", interactive=False)
+            >>> 
+            >>> # Export with separate asset files (smaller HTML)
+            >>> widget.export_html("workflow.html", embed_assets=False)
+            >>> 
+            >>> # Custom height and title
+            >>> widget.export_html(
+            ...     "my_dag.html",
+            ...     title="My DAG Visualization",
+            ...     height="100vh"
+            ... )
+        """
+        from jinja2 import Template
+        from pathlib import Path
+        
+        # Use widget's height if not specified
+        if height is None:
+            height = self.height
+        
+        # Prepare flow data
+        flow_data = {
+            "nodes": self.nodes,
+            "edges": self.edges,
+            "viewport": self.viewport,
+            "node_templates": self.node_templates,
+            "node_values": _to_plain_dict(self.node_values),
+            "height": height,
+            "interactive": interactive
+        }
+        
+        # Load template
+        template_path = Path(__file__).parent / "templates" / "standalone.html.jinja2"
+        if not template_path.exists():
+            raise FileNotFoundError(
+                f"HTML template not found at {template_path}. "
+                "Please ensure the package is properly installed."
+            )
+        
+        template_content = template_path.read_text()
+        template = Template(template_content)
+        
+        # Load JavaScript bundle
+        js_path = Path(__file__).parent / "static" / "standalone.iife.js"
+        css_path = Path(__file__).parent / "static" / "standalone.css"
+        
+        if not js_path.exists():
+            raise FileNotFoundError(
+                f"Standalone JavaScript bundle not found at {js_path}. "
+                "Please rebuild the package with: cd js && npm run build:standalone"
+            )
+        
+        # Read assets
+        js_content = js_path.read_text() if embed_assets else None
+        css_content = css_path.read_text() if embed_assets and css_path.exists() else None
+        
+        # Render template
+        html_content = template.render(
+            title=title,
+            flow_data=json.dumps(flow_data, indent=2),
+            embed_js=embed_assets,
+            embed_css=embed_assets and css_content is not None,
+            js_content=js_content,
+            css_content=css_content
+        )
+        
+        # Write HTML file
+        output_path = Path(filename)
+        output_path.write_text(html_content)
+        
+        # Copy separate asset files if not embedding
+        if not embed_assets:
+            output_dir = output_path.parent
+            import shutil
+            shutil.copy(js_path, output_dir / "standalone.iife.js")
+            if css_path.exists():
+                shutil.copy(css_path, output_dir / "standalone.css")
+        
+        print(f"HTML exported to {filename}")
+        return str(filename)
     
     def export_image(
         self,

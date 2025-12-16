@@ -37,6 +37,29 @@ widget
 
 ![Demo](imgs/widget_example.gif)
 
+## Features
+
+- **Interactive Node Graphs**: Build visual workflows with drag-and-drop nodes
+- **No JavaScript Required**: Pure Python API for defining node types and layouts
+- **JSON Schema Integration**: Automatically generate node UIs from JSON schemas
+- **Static HTML Export**: Export workflows as standalone HTML files for documentation and sharing
+  - Interactive or view-only modes
+  - Self-contained files that work without Python/Jupyter
+  - Perfect for visualizing DAGs and data pipelines
+- **Jupyter & Marimo Support**: Works seamlessly in Jupyter notebooks and Marimo apps
+- **Flexible Layouts**: Customizable grid-based node layouts with various components
+- **Type-Safe**: Built with Pydantic for robust type validation
+
+## Export Workflows
+
+```python
+# Export as standalone HTML (no Python required to view)
+widget.export_html("workflow.html", interactive=True)
+
+# Export as JSON for persistence
+widget.export_json("workflow.json")
+```
+
 
 ## Development
 

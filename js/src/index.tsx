@@ -18,31 +18,16 @@ import { useExport } from "./hooks/useExport";
 import { useContextMenu } from "./hooks/useContextMenu";
 import { useImageExport, type ImageExportTrigger } from "./hooks/useImageExport";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar";
-
-// Context to provide setNodesDict from useModelState to nodes
-const SetNodesDictContext = React.createContext<React.Dispatch<React.SetStateAction<NodesDict>> | null>(null);
-
-// Context to provide setNodeValues for syncing values separately
-const SetNodeValuesContext = React.createContext<React.Dispatch<React.SetStateAction<NodeValues>> | null>(null);
+import {
+  SetNodesDictContext,
+  SetNodeValuesContext,
+  useSetNodesDict,
+  useSetNodeValues,
+} from "./contexts/StandaloneContexts";
 
 // Export contexts for testing
 export { SetNodesDictContext, SetNodeValuesContext };
-
-export const useSetNodesDict = () => {
-  const setNodesDict = React.useContext(SetNodesDictContext);
-  if (!setNodesDict) {
-    throw new Error('useSetNodesDict must be used within SetNodesDictContext.Provider');
-  }
-  return setNodesDict;
-};
-
-export const useSetNodeValues = () => {
-  const setNodeValues = React.useContext(SetNodeValuesContext);
-  if (!setNodeValues) {
-    throw new Error('useSetNodeValues must be used within SetNodeValuesContext.Provider');
-  }
-  return setNodeValues;
-};
+export { useSetNodesDict, useSetNodeValues };
 
 // Export context
 export { NodeDataContext } from "./contexts/NodeDataContext";
@@ -266,37 +251,37 @@ function NodeFlowComponent() {
     <div ref={containerRef} style={{ width: "100%", height: height, display: "flex", position: "relative", overflow: "hidden" }}>
       <SetNodesDictContext.Provider value={setNodesDict}>
         <SetNodeValuesContext.Provider value={setNodeValues}>
-          <ReactFlowProvider>
-            <SidebarProvider defaultOpen={true} className="!min-h-0 !h-full">
-              <Sidebar collapsible="icon" className="!relative !inset-auto !h-full">
-                <SidebarHeader className="flex flex-row items-center justify-between border-b">
-                  <span className="text-sm font-semibold">Add Nodes</span>
-                  <SidebarTrigger />
-                </SidebarHeader>
-                <NodeSidebar onAddNode={onAddNode} templates={nodeTemplates} />
-              </Sidebar>
-              <div style={{ flex: 1, height: "100%", position: "relative" }}>
-                <FlowCanvas
-                  nodes={nodesWithData}
-                  edges={edges}
-                  nodeTypes={nodeTypes}
-                  height={height}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onNodeContextMenu={onNodeContextMenu}
-                  onEdgeContextMenu={onEdgeContextMenu}
-                  onPaneClick={onPaneClick}
-                  contextMenu={contextMenu}
-                  onDelete={onDelete}
-                  onCloseContextMenu={closeContextMenu}
-                  onExport={exportToJSON}
-                  onLayoutVertical={() => onLayout("TB")}
-                  onLayoutHorizontal={() => onLayout("LR")}
-                />
-              </div>
-            </SidebarProvider>
-          </ReactFlowProvider>
+            <ReactFlowProvider>
+              <SidebarProvider defaultOpen={true} className="!min-h-0 !h-full">
+                <Sidebar collapsible="icon" className="!relative !inset-auto !h-full">
+                  <SidebarHeader className="flex flex-row items-center justify-between border-b">
+                    <span className="text-sm font-semibold">Add Nodes</span>
+                    <SidebarTrigger />
+                  </SidebarHeader>
+                  <NodeSidebar onAddNode={onAddNode} templates={nodeTemplates} />
+                </Sidebar>
+                <div style={{ flex: 1, height: "100%", position: "relative" }}>
+                  <FlowCanvas
+                    nodes={nodesWithData}
+                    edges={edges}
+                    nodeTypes={nodeTypes}
+                    height={height}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onNodeContextMenu={onNodeContextMenu}
+                    onEdgeContextMenu={onEdgeContextMenu}
+                    onPaneClick={onPaneClick}
+                    contextMenu={contextMenu}
+                    onDelete={onDelete}
+                    onCloseContextMenu={closeContextMenu}
+                    onExport={exportToJSON}
+                    onLayoutVertical={() => onLayout("TB")}
+                    onLayoutHorizontal={() => onLayout("LR")}
+                  />
+                </div>
+              </SidebarProvider>
+            </ReactFlowProvider>
         </SetNodeValuesContext.Provider>
       </SetNodesDictContext.Provider>
     </div>

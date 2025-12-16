@@ -119,7 +119,6 @@ describe("UI Components", () => {
         id: "button1",
         type: "button",
         label: "Click Me",
-        action: "click",
         variant: "primary",
       };
 
@@ -139,7 +138,6 @@ describe("UI Components", () => {
         id: "button-secondary",
         type: "button",
         label: "Secondary",
-        action: "action",
         variant: "secondary",
       };
 

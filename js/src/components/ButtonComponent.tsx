@@ -8,7 +8,6 @@ export const ButtonComponentSchema = v.object({
   id: v.string(),
   type: v.literal("button"),
   label: v.string(),
-  action: v.string(),
   value: v.optional(v.number()),
   variant: v.optional(v.union([
     v.literal("default"),
@@ -43,7 +42,7 @@ export function ButtonComponent({ component, onValueChange }: ButtonComponentPro
   const currentCount = (context?.nodeData.values?.[component.id] as number) ?? component.value ?? 0;
   
   const handleClick = () => {
-    // Increment the counter
+    // Increment counter
     const newCount = currentCount + 1;
     onValueChange?.(component.id, newCount);
   };

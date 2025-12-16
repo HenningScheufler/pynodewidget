@@ -18,7 +18,6 @@ class ButtonComponent(Component):
     """Action button."""
     type: Literal["button"] = "button"
     label: Optional[str] = Field(None, description="Button text (inferred from id if not provided)")
-    action: str = Field(..., description="Action identifier")
     value: int = Field(default=0, description="Click counter value")
     variant: Literal["default", "destructive", "outline", "secondary", "ghost", "link"] = Field(
         default="default", 

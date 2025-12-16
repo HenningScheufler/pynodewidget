@@ -24,7 +24,7 @@ import { NodeGridRenderer } from "../components/GridRenderer";
 import { NodeDataContext, type NodeData } from "../contexts/NodeDataContext";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useSetNodeValues } from "../index";
+import { useSetNodeValues } from "../contexts/StandaloneContexts";
 
 /**
  * NodeComponentBuilder class

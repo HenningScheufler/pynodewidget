@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "build": "vite build --config vite.config.index.ts && vite build --config vite.config.json_schema.ts",
+    "build:standalone": "vite build --config vite.config.standalone.ts",
     "dev": "vite --open /dev/app.html",
     "preview": "vite preview",
     "test": "vitest run",
