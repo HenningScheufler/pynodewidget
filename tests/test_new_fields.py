@@ -44,12 +44,11 @@ class TestButtonComponent:
     
     def test_button_component_basic(self):
         """Test basic ButtonComponent creation."""
-        button = ButtonComponent(id="submit", action="submit_form")
+        button = ButtonComponent(id="submit")
         
         assert button.id == "submit"
         assert button.type == "button"
         assert button.label == "submit"
-        assert button.action == "submit_form"
         assert button.variant == "default"
         assert button.size == "default"
         assert button.disabled is False
@@ -59,14 +58,12 @@ class TestButtonComponent:
         button = ButtonComponent(
             id="delete",
             label="Delete Item",
-            action="delete_item",
             variant="destructive",
             size="lg",
             disabled=True
         )
         
         assert button.label == "Delete Item"
-        assert button.action == "delete_item"
         assert button.variant == "destructive"
         assert button.size == "lg"
         assert button.disabled is True
@@ -76,7 +73,7 @@ class TestButtonComponent:
         variants = ["default", "destructive", "outline", "secondary", "ghost", "link"]
         
         for variant in variants:
-            button = ButtonComponent(id=f"btn_{variant}", action="test", variant=variant)
+            button = ButtonComponent(id=f"btn_{variant}", variant=variant)
             assert button.variant == variant
     
     def test_button_component_sizes(self):
@@ -84,19 +81,20 @@ class TestButtonComponent:
         sizes = ["default", "sm", "lg", "icon"]
         
         for size in sizes:
-            button = ButtonComponent(id=f"btn_{size}", action="test", size=size)
+            button = ButtonComponent(id=f"btn_{size}", size=size)
             assert button.size == size
     
     def test_button_component_label_inference(self):
         """Test that label defaults to id."""
-        button = ButtonComponent(id="start_process", action="start")
+        button = ButtonComponent(id="start_process")
         
         assert button.label == "start_process"
     
-    def test_button_component_requires_action(self):
-        """Test that action is required."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
-            ButtonComponent(id="button")  # Missing required 'action' field
+    def test_button_component_no_required_fields(self):
+        """Test that button can be created with just id."""
+        button = ButtonComponent(id="button")
+        assert button.id == "button"
+        assert button.label == "button"  # Should default to id
 
 
 class TestFieldIntegration:

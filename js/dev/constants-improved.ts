@@ -239,10 +239,9 @@ function createHeader(
 function createButton(
   id: string,
   label: string,
-  action: string,
   variant: 'primary' | 'secondary' = 'primary'
 ): ButtonComponent {
-  return { type: 'button', id, label, action, variant };
+  return { type: 'button', id, label, variant };
 }
 
 /**
@@ -485,7 +484,7 @@ function createComplexGrid(): NodeGrid {
         createFlexLayout('row', { justify: 'space-between', align: 'center' }),
         [
           createHeader('title', 'Advanced Processor', '🚀', COLORS.sky),
-          createButton('run', 'Run', 'execute', 'primary'),
+          createButton('run', 'Run', 'primary'),
         ]
       ),
       // Left: Input handles
@@ -527,7 +526,7 @@ function createComplexGrid(): NodeGrid {
         createCoordinates(3, 1, 1, 3),
         createFlexLayout('row', { justify: 'center' }),
         [
-          createButton('reset', 'Reset', 'reset', 'secondary'),
+          createButton('reset', 'Reset', 'secondary'),
         ]
       ),
     ],

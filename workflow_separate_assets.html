@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Processing Pipeline - Separate Assets</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+        
+        #pynodewidget-root {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 1.2rem;
+            color: #666;
+        }
+    </style>
+    
+    <link rel="stylesheet" href="standalone.css">
+    
+</head>
+<body>
+    <div id="pynodewidget-root">
+        <div class="loading">Loading workflow visualization...</div>
+    </div>
+    
+    <!-- Embedded workflow data -->
+    <script id="pynodewidget-data" type="application/json">
+{
+  "nodes": {
+    "source-1": {
+      "type": "data_source",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "data": {}
+    },
+    "processor-1": {
+      "type": "processor",
+      "position": {
+        "x": 400,
+        "y": 50
+      },
+      "data": {}
+    },
+    "processor-2": {
+      "type": "processor",
+      "position": {
+        "x": 400,
+        "y": 200
+      },
+      "data": {}
+    },
+    "analyzer-1": {
+      "type": "analyzer",
+      "position": {
+        "x": 700,
+        "y": 100
+      },
+      "data": {}
+    },
+    "output-1": {
+      "type": "outputNode",
+      "position": {
+        "x": 1000,
+        "y": 100
+      },
+      "data": {}
+    }
+  },
+  "edges": [
+    {
+      "id": "e1",
+      "source": "source-1",
+      "target": "processor-1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e2",
+      "source": "source-1",
+      "target": "processor-2",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e3",
+      "source": "processor-1",
+      "target": "analyzer-1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e4",
+      "source": "processor-2",
+      "target": "analyzer-1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e5",
+      "source": "analyzer-1",
+      "target": "output-1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "node_templates": [
+    {
+      "type": "data_source",
+      "label": "Data Source",
+      "description": "",
+      "icon": "\ud83d\udcc2",
+      "category": "general",
+      "definition": {
+        "grid": {
+          "rows": [
+            "auto",
+            "1fr"
+          ],
+          "columns": [
+            "auto",
+            "1fr",
+            "auto"
+          ],
+          "gap": "8px",
+          "cells": [
+            {
+              "id": "cell-0",
+              "coordinates": {
+                "row": 1,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 3
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "row",
+                "align": "start",
+                "justify": "center",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "header",
+                  "type": "header",
+                  "label": "Data Source",
+                  "icon": "\ud83d\udcc2",
+                  "bgColor": "#3b82f6",
+                  "textColor": null
+                }
+              ]
+            },
+            {
+              "id": "cell-1",
+              "coordinates": {
+                "row": 2,
+                "col": 2,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "start",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "source_type",
+                  "type": "select",
+                  "label": "source_type",
+                  "value": "file",
+                  "options": [
+                    "file",
+                    "database",
+                    "api"
+                  ]
+                },
+                {
+                  "id": "path",
+                  "type": "text",
+                  "label": "path",
+                  "value": "/data/input.csv",
+                  "placeholder": ""
+                },
+                {
+                  "id": "refresh_interval",
+                  "type": "number",
+                  "label": "refresh_interval",
+                  "value": 60.0,
+                  "min": 1.0,
+                  "max": 3600.0
+                }
+              ]
+            },
+            {
+              "id": "cell-2",
+              "coordinates": {
+                "row": 2,
+                "col": 3,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "center",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "output",
+                  "type": "labeled-handle",
+                  "handle_type": "output",
+                  "label": "Out",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            }
+          ]
+        },
+        "style": null
+      },
+      "defaultValues": {
+        "source_type": "file",
+        "path": "/data/input.csv",
+        "refresh_interval": 60.0
+      }
+    },
+    {
+      "type": "processor",
+      "label": "Processor",
+      "description": "",
+      "icon": "\u2699\ufe0f",
+      "category": "general",
+      "definition": {
+        "grid": {
+          "rows": [
+            "auto",
+            "1fr"
+          ],
+          "columns": [
+            "auto",
+            "1fr",
+            "auto"
+          ],
+          "gap": "8px",
+          "cells": [
+            {
+              "id": "cell-0",
+              "coordinates": {
+                "row": 1,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 3
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "row",
+                "align": "start",
+                "justify": "center",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "header",
+                  "type": "header",
+                  "label": "Processor",
+                  "icon": "\u2699\ufe0f",
+                  "bgColor": "#8b5cf6",
+                  "textColor": null
+                }
+              ]
+            },
+            {
+              "id": "cell-1",
+              "coordinates": {
+                "row": 2,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "center",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "input",
+                  "type": "labeled-handle",
+                  "handle_type": "input",
+                  "label": "In",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            },
+            {
+              "id": "cell-2",
+              "coordinates": {
+                "row": 2,
+                "col": 2,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "start",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "operation",
+                  "type": "select",
+                  "label": "operation",
+                  "value": "filter",
+                  "options": [
+                    "filter",
+                    "transform",
+                    "aggregate"
+                  ]
+                },
+                {
+                  "id": "threshold",
+                  "type": "number",
+                  "label": "threshold",
+                  "value": 0.5,
+                  "min": 0.0,
+                  "max": 1.0
+                },
+                {
+                  "id": "enabled",
+                  "type": "bool",
+                  "label": "enabled",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "id": "cell-3",
+              "coordinates": {
+                "row": 2,
+                "col": 3,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "center",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "output",
+                  "type": "labeled-handle",
+                  "handle_type": "output",
+                  "label": "Out",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            }
+          ]
+        },
+        "style": null
+      },
+      "defaultValues": {
+        "operation": "filter",
+        "threshold": 0.5,
+        "enabled": true
+      }
+    },
+    {
+      "type": "analyzer",
+      "label": "Analyzer",
+      "description": "",
+      "icon": "\ud83d\udcca",
+      "category": "general",
+      "definition": {
+        "grid": {
+          "rows": [
+            "auto",
+            "1fr"
+          ],
+          "columns": [
+            "auto",
+            "1fr",
+            "auto"
+          ],
+          "gap": "8px",
+          "cells": [
+            {
+              "id": "cell-0",
+              "coordinates": {
+                "row": 1,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 3
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "row",
+                "align": "start",
+                "justify": "center",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "header",
+                  "type": "header",
+                  "label": "Analyzer",
+                  "icon": "\ud83d\udcca",
+                  "bgColor": "#059669",
+                  "textColor": null
+                }
+              ]
+            },
+            {
+              "id": "cell-1",
+              "coordinates": {
+                "row": 2,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "center",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "input",
+                  "type": "labeled-handle",
+                  "handle_type": "input",
+                  "label": "In",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            },
+            {
+              "id": "cell-2",
+              "coordinates": {
+                "row": 2,
+                "col": 2,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "start",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "analysis_type",
+                  "type": "select",
+                  "label": "analysis_type",
+                  "value": "statistics",
+                  "options": [
+                    "statistics",
+                    "trends",
+                    "anomalies"
+                  ]
+                },
+                {
+                  "id": "confidence",
+                  "type": "number",
+                  "label": "confidence",
+                  "value": 0.95,
+                  "min": 0.5,
+                  "max": 1.0
+                },
+                {
+                  "id": "detailed",
+                  "type": "bool",
+                  "label": "detailed",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "id": "cell-3",
+              "coordinates": {
+                "row": 2,
+                "col": 3,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "center",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "output",
+                  "type": "labeled-handle",
+                  "handle_type": "output",
+                  "label": "Out",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            }
+          ]
+        },
+        "style": null
+      },
+      "defaultValues": {
+        "analysis_type": "statistics",
+        "confidence": 0.95,
+        "detailed": false
+      }
+    },
+    {
+      "type": "outputNode",
+      "label": "Output",
+      "description": "",
+      "icon": "\ud83d\udcbe",
+      "category": "general",
+      "definition": {
+        "grid": {
+          "rows": [
+            "auto",
+            "1fr"
+          ],
+          "columns": [
+            "auto",
+            "1fr"
+          ],
+          "gap": "8px",
+          "cells": [
+            {
+              "id": "cell-0",
+              "coordinates": {
+                "row": 1,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 2
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "row",
+                "align": "start",
+                "justify": "center",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "header",
+                  "type": "header",
+                  "label": "Output",
+                  "icon": "\ud83d\udcbe",
+                  "bgColor": "#dc2626",
+                  "textColor": null
+                }
+              ]
+            },
+            {
+              "id": "cell-1",
+              "coordinates": {
+                "row": 2,
+                "col": 1,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "center",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "input",
+                  "type": "labeled-handle",
+                  "handle_type": "input",
+                  "label": "In",
+                  "dataType": null,
+                  "required": false
+                }
+              ]
+            },
+            {
+              "id": "cell-2",
+              "coordinates": {
+                "row": 2,
+                "col": 2,
+                "row_span": 1,
+                "col_span": 1
+              },
+              "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "start",
+                "justify": "start",
+                "gap": "4px"
+              },
+              "components": [
+                {
+                  "id": "format",
+                  "type": "select",
+                  "label": "format",
+                  "value": "json",
+                  "options": [
+                    "json",
+                    "csv",
+                    "parquet"
+                  ]
+                },
+                {
+                  "id": "destination",
+                  "type": "text",
+                  "label": "destination",
+                  "value": "/output/results.json",
+                  "placeholder": ""
+                },
+                {
+                  "id": "compress",
+                  "type": "bool",
+                  "label": "compress",
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        "style": null
+      },
+      "defaultValues": {
+        "format": "json",
+        "destination": "/output/results.json",
+        "compress": false
+      }
+    }
+  ],
+  "node_values": {
+    "source-1": {
+      "source_type": "database",
+      "path": "postgresql://localhost/mydb",
+      "refresh_interval": 30
+    },
+    "processor-1": {
+      "operation": "filter",
+      "threshold": 0.7,
+      "enabled": true
+    },
+    "processor-2": {
+      "operation": "transform",
+      "threshold": 0.8,
+      "enabled": true
+    },
+    "analyzer-1": {
+      "analysis_type": "trends",
+      "confidence": 0.95,
+      "detailed": true
+    },
+    "output-1": {
+      "format": "parquet",
+      "destination": "/output/results.parquet",
+      "compress": true
+    }
+  },
+  "height": "700px",
+  "interactive": true
+}
+    </script>
+    
+    <!-- Bundle script -->
+    
+    <script src="standalone.iife.js"></script>
+    
+</body>
+</html>

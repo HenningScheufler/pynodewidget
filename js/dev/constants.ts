@@ -234,10 +234,9 @@ function createHeader(
 function createButton(
   id: string,
   label: string,
-  action: string,
   variant: 'primary' | 'secondary' = 'primary'
 ): ButtonComponent {
-  return { type: 'button', id, label, action, variant };
+  return { type: 'button', id, label, variant };
 }
 
 /**
