@@ -6,8 +6,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "anywidget>=0.9.0",
-    "pydantic>=2.12.4",
-    "traitlets>=5.14.0",
+    "pydantic>=2.0.0",
+    "traitlets>=5.0.0",
 ]
 authors = [
     { name = "Henning", email = "henning.scheufler@web.de" }
