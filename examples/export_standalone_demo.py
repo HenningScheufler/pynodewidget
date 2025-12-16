@@ -162,7 +162,7 @@ def create_data_processing_workflow():
     )
     
     widget.add_node_type(
-        type_name="output",
+        type_name="outputNode",
         label="Output",
         icon="💾",
         grid_layout=grid_output
@@ -191,7 +191,7 @@ def create_data_processing_workflow():
             "data": {}
         },
         "output-1": {
-            "type": "output",
+            "type": "outputNode",
             "position": {"x": 1000, "y": 100},
             "data": {}
         }
@@ -269,7 +269,6 @@ def create_data_processing_workflow():
     
     return widget
 
-#%%
 """Main function to demonstrate HTML export capabilities."""
 
 print("=" * 70)
