@@ -217,7 +217,7 @@ function NodeFlowComponent() {
   );
 
   // Use custom hooks for separated concerns
-  const { exportToJSON } = useExport(nodes, edges);
+  const { exportToJSON } = useExport(nodes, edges, nodeValues);
   
   // Handle image export requests from Python
   const handleDataExported = React.useCallback((dataUrl: string) => {
