@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from pynodewidget.snakemake_flow import (
+    ParamSource,
     Rule,
     data_type_of,
     dot_to_flow,
@@ -12,6 +13,8 @@ from pynodewidget.snakemake_flow import (
     parse_snakefile,
     rules_to_flow,
     rules_to_snakefile,
+    sweep_to_flow,
+    sweep_to_snakefile,
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "simple.smk"
@@ -163,21 +166,59 @@ def test_rules_to_snakefile_shape():
     assert "    shell:" in text
 
 
-def test_generated_snakefile_valid_with_snakemake(tmp_path):
-    """The generated Snakefile is parseable by the real snakemake package.
-
-    Optional: skipped unless the ``snakemake`` extra is installed.
-    """
+def _snakemake_cli():
+    """Return the snakemake CLI path, or skip if the extra isn't installed."""
     pytest.importorskip("snakemake")
-    from snakemake.workflow import Workflow
+    import shutil
 
+    cli = shutil.which("snakemake")
+    if cli is None:
+        pytest.skip("snakemake CLI not on PATH")
+    return cli
+
+
+def test_generated_snakefile_valid_with_snakemake(tmp_path):
+    """The generated Snakefile builds a valid rule graph under real snakemake.
+
+    Optional: skipped unless the ``snakemake`` extra is installed. Uses the CLI
+    (the stable interface) rather than snakemake's private Python API.
+    """
+    import subprocess
+
+    cli = _snakemake_cli()
     rules = parse_snakefile(FIXTURE)
-    snakefile = tmp_path / "Snakefile"
-    snakefile.write_text(rules_to_snakefile(rules))
+    (tmp_path / "Snakefile").write_text(rules_to_snakefile(rules))
 
-    workflow = Workflow(snakefile=str(snakefile))
-    workflow.include(str(snakefile))
-    assert {r.name for r in workflow.rules} == {"step1", "step2"}
+    result = subprocess.run(
+        [cli, "--rulegraph"], cwd=tmp_path, capture_output=True, text=True
+    )
+    # Exit 0 + a rule graph means snakemake parsed and resolved the file.
+    assert result.returncode == 0, result.stderr
+    assert "digraph" in result.stdout
+    assert "step1" in result.stdout
+
+
+def test_generated_sweep_dag_expands(tmp_path):
+    """The generated parametric Snakefile expands into one job per sweep value."""
+    import subprocess
+
+    cli = _snakemake_cli()
+    (tmp_path / "Snakefile").write_text(
+        sweep_to_snakefile(SWEEP_SOURCES, SWEEP_RULES)
+    )
+    data = tmp_path / "data"
+    data.mkdir()
+    for s in ("A", "B", "C"):
+        (data / f"{s}.in").touch()
+
+    result = subprocess.run(
+        [cli, "--dag"], cwd=tmp_path, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    # The {sample} sweep expanded into three simulate jobs.
+    for s in ("A", "B", "C"):
+        assert f"sample: {s}" in result.stdout
+    assert result.stdout.count('label = "simulate') == 3
 
 
 def test_parse_dot():
@@ -230,6 +271,58 @@ def test_dot_to_flow():
 
     # Layered layout: download (root) left of all (leaf).
     assert flow.nodes["3"]["position"]["x"] < flow.nodes["0"]["position"]["x"]
+
+
+SWEEP_SOURCES = [ParamSource("sample", ["A", "B", "C"])]
+SWEEP_RULES = [
+    Rule("all", input=["results/{sample}.out"]),
+    Rule(
+        "simulate",
+        input=["data/{sample}.in"],
+        output=["results/{sample}.out"],
+        shell="python run.py {input} {output}",
+    ),
+]
+
+
+def test_sweep_to_snakefile():
+    """A sweep generates a list variable and an expand() over the aggregator."""
+    text = sweep_to_snakefile(SWEEP_SOURCES, SWEEP_RULES)
+
+    assert 'samples = ["A", "B", "C"]' in text
+    # `all` has no output -> its wildcard input is expanded over the sweep.
+    assert 'expand("results/{sample}.out", sample=samples)' in text
+    # `simulate` keeps the plain wildcard patterns (Snakemake resolves them).
+    assert '        "data/{sample}.in"' in text
+    assert '        "results/{sample}.out"' in text
+    assert "python run.py {input} {output}" in text
+
+
+def test_sweep_to_flow_source_and_param_ports():
+    """The source node feeds a param port on every rule using its wildcard."""
+    flow = sweep_to_flow(SWEEP_SOURCES, SWEEP_RULES)
+
+    types = {t["type"] for t in flow.node_templates}
+    assert {"param_sample", "rule_all", "rule_simulate"} <= types
+
+    # The sample source node exists with a typed 'param:sample' output port.
+    src = next(t for t in flow.node_templates if t["type"] == "param_sample")
+    out = [h for h in _handles(src) if h["handle_type"] == "output"]
+    assert out[0]["dataType"] == "param:sample"
+
+    # simulate has a param:sample input port (plus its file port).
+    sim = next(t for t in flow.node_templates if t["type"] == "rule_simulate")
+    param_ports = [h for h in _handles(sim) if h["id"] == "param:sample"]
+    assert param_ports and param_ports[0]["dataType"] == "param:sample"
+
+    # A param edge connects the source to both swept rules.
+    param_edges = [e for e in flow.edges if e["source"] == "src_sample"]
+    assert {e["target"] for e in param_edges} == {"all", "simulate"}
+    assert all(e["targetHandle"] == "param:sample" for e in param_edges)
+
+    # The file dependency simulate -> all is still present.
+    file_edges = [e for e in flow.edges if e["source"] == "simulate"]
+    assert file_edges and file_edges[0]["target"] == "all"
 
 
 def _header(template: dict) -> dict:

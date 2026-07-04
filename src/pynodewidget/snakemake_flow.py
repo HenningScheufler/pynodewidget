@@ -40,6 +40,9 @@ __all__ = [
     "DotNode",
     "parse_dot",
     "dot_to_flow",
+    "ParamSource",
+    "sweep_to_flow",
+    "sweep_to_snakefile",
 ]
 
 #: Prefix for the per-rule node type (keeps rule names clear of reserved names
@@ -99,6 +102,25 @@ class Rule:
     output: List[str] = field(default_factory=list)
     shell: Optional[str] = None
     # TODO: params, wildcards, run/script directives, named I/O.
+
+
+@dataclass
+class ParamSource:
+    """A parameter-sweep source: a wildcard name and the values it sweeps over.
+
+    ``ParamSource("sample", ["A", "B", "C"])`` drives a sweep over ``{sample}``.
+    In the graph it is a node whose output port feeds every rule that uses the
+    ``{sample}`` wildcard; when generating a Snakefile it becomes a list variable
+    (``samples = ["A", "B", "C"]``) and an ``expand(...)`` over the aggregating
+    rule's inputs.
+
+    Attributes:
+        name: The wildcard / parameter name (e.g. ``"sample"``).
+        values: The sweep values.
+    """
+
+    name: str
+    values: List[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -604,3 +626,240 @@ def _layered_positions(
         positions[nid] = {"x": d * x_step, "y": row * y_step}
         row_in_layer[d] = row + 1
     return positions
+
+
+# ---------------------------------------------------------------------------
+# Parameter sweeps: source nodes + rules -> graph and generated Snakefile
+#
+# A parameter sweep is a ParamSource (a wildcard and its values) feeding rules
+# that carry that ``{wildcard}``. The graph is the source of truth: it maps to a
+# Snakefile that lists the values and aggregates the swept outputs with expand().
+# ---------------------------------------------------------------------------
+
+_WILDCARD_RE = re.compile(r"\{(\w+)\}")
+
+
+def _list_var(name: str) -> str:
+    """Snakefile list-variable name for a sweep parameter ('sample' -> 'samples')."""
+    return f"{name}s"
+
+
+def _param_handle_id(name: str) -> str:
+    return f"param:{name}"
+
+
+def _wildcards_of_rule(rule: Rule, source_names: List[str]) -> List[str]:
+    """Sweep parameter names whose ``{name}`` appears in the rule's files."""
+    found: List[str] = []
+    for f in list(rule.input) + list(rule.output):
+        for match in _WILDCARD_RE.findall(f):
+            if match in source_names and match not in found:
+                found.append(match)
+    return found
+
+
+def _first_wildcard(filename: str, source_names: List[str]) -> Optional[str]:
+    for match in _WILDCARD_RE.findall(filename):
+        if match in source_names:
+            return match
+    return None
+
+
+def sweep_to_snakefile(sources: List[ParamSource], rules: List[Rule]) -> str:
+    """Generate a parametric Snakefile from sweep sources and rules.
+
+    Each source becomes a list variable; a rule with **no output** (the target,
+    e.g. ``all``) has its wildcard inputs wrapped in ``expand(...)`` over the
+    matching source, producing a real Snakemake parameter sweep.
+    """
+    source_names = [s.name for s in sources]
+
+    blocks: List[str] = []
+
+    if sources:
+        header = []
+        for s in sources:
+            values = ", ".join(f'"{v}"' for v in s.values)
+            header.append(f"{_list_var(s.name)} = [{values}]")
+        blocks.append("\n".join(header))
+
+    for rule in rules:
+        aggregate = not rule.output
+        lines = [f"rule {rule.name}:"]
+        if rule.input:
+            lines.append("    input:")
+            lines.extend(_sweep_input_lines(rule, source_names, aggregate))
+        if rule.output:
+            lines.append("    output:")
+            lines.extend(_string_lines(rule.output))
+        if rule.shell:
+            lines.append("    shell:")
+            lines.append(f'        "{rule.shell}"')
+        blocks.append("\n".join(lines))
+
+    return "\n\n".join(blocks) + "\n"
+
+
+def _sweep_input_lines(
+    rule: Rule, source_names: List[str], aggregate: bool
+) -> List[str]:
+    """Input lines for a rule; aggregator inputs with a wildcard use expand()."""
+    files = _dedup(rule.input)
+    out: List[str] = []
+    for i, f in enumerate(files):
+        comma = "," if i < len(files) - 1 else ""
+        wildcard = _first_wildcard(f, source_names)
+        if aggregate and wildcard:
+            out.append(
+                f'        expand("{f}", {wildcard}={_list_var(wildcard)}){comma}'
+            )
+        else:
+            out.append(f'        "{f}"{comma}')
+    return out
+
+
+def sweep_to_flow(
+    sources: List[ParamSource],
+    rules: List[Rule],
+    widget: Optional[NodeFlowWidget] = None,
+    x_step: int = 460,
+    y_step: int = 220,
+) -> NodeFlowWidget:
+    """Build a graph of sweep source nodes feeding rule nodes.
+
+    Each source is a node whose typed ``param`` output port connects to a matching
+    ``param`` input port on every rule that uses its ``{wildcard}``. Rules keep
+    their per-file typed ports and file-dependency edges (see :func:`rules_to_flow`).
+    """
+    if widget is None:
+        widget = NodeFlowWidget()
+
+    source_names = [s.name for s in sources]
+
+    for source in sources:
+        _register_source_type(widget, source)
+    for rule in rules:
+        _register_sweep_rule_type(widget, rule, source_names)
+
+    edges = _build_edges(rules)
+    for source in sources:
+        for rule in rules:
+            if source.name in _wildcards_of_rule(rule, source_names):
+                edges.append({
+                    "id": f"param:{source.name}->{rule.name}",
+                    "source": _source_node_id(source.name),
+                    "target": rule.name,
+                    "sourceHandle": "out",
+                    "targetHandle": _param_handle_id(source.name),
+                })
+
+    node_ids = [_source_node_id(s.name) for s in sources] + [r.name for r in rules]
+    positions = _layered_positions(
+        node_ids, [(e["source"], e["target"]) for e in edges], x_step, y_step
+    )
+
+    nodes = {}
+    for source in sources:
+        sid = _source_node_id(source.name)
+        nodes[sid] = {
+            "type": _source_type_name(source.name),
+            "position": positions[sid],
+            "data": {},
+        }
+    for rule in rules:
+        nodes[rule.name] = {
+            "type": _type_name(rule.name),
+            "position": positions[rule.name],
+            "data": {},
+        }
+    widget.nodes = nodes
+    widget.edges = edges
+    return widget
+
+
+def _source_node_id(name: str) -> str:
+    return f"src_{name}"
+
+
+def _source_type_name(name: str) -> str:
+    return f"param_{name}"
+
+
+def _register_source_type(widget: NodeFlowWidget, source: ParamSource) -> None:
+    type_name = _source_type_name(source.name)
+    if any(t.get("type") == type_name for t in widget.node_templates):
+        return
+    widget.add_node_type(
+        type_name=type_name,
+        label=source.name,
+        icon="🎚️",
+        description=f"Parameter sweep '{source.name}'",
+        grid_layout=create_three_column_grid(
+            center_components=[
+                HeaderComponent(id="header", label=source.name, icon="🎚️", bgColor="#f59e0b"),
+                TextField(id="values", label="values", value=", ".join(source.values)),
+            ],
+            right_components=[
+                LabeledHandle(
+                    id="out",
+                    label=source.name,
+                    handle_type="output",
+                    dataType=_param_handle_id(source.name),
+                ),
+            ],
+        ),
+    )
+
+
+def _register_sweep_rule_type(
+    widget: NodeFlowWidget, rule: Rule, source_names: List[str]
+) -> None:
+    type_name = _type_name(rule.name)
+    if any(t.get("type") == type_name for t in widget.node_templates):
+        return
+
+    param_handles = [
+        LabeledHandle(
+            id=_param_handle_id(w),
+            label=w,
+            handle_type="input",
+            dataType=_param_handle_id(w),
+            required=True,
+        )
+        for w in _wildcards_of_rule(rule, source_names)
+    ]
+    input_handles = [
+        LabeledHandle(
+            id=_in_handle_id(f),
+            label=_basename(f),
+            handle_type="input",
+            dataType=data_type_of(f),
+            required=True,
+        )
+        for f in _dedup(rule.input)
+    ]
+    output_handles = [
+        LabeledHandle(
+            id=_out_handle_id(f),
+            label=_basename(f),
+            handle_type="output",
+            dataType=data_type_of(f),
+        )
+        for f in _dedup(rule.output)
+    ]
+
+    center = [HeaderComponent(id="header", label=rule.name, icon="🐍")]
+    if rule.shell is not None:
+        center.append(TextField(id="shell", label="shell", value=rule.shell))
+
+    widget.add_node_type(
+        type_name=type_name,
+        label=rule.name,
+        icon="🐍",
+        description=f"Snakemake rule '{rule.name}'",
+        grid_layout=create_three_column_grid(
+            left_components=(param_handles + input_handles) or None,
+            center_components=center,
+            right_components=output_handles or None,
+        ),
+    )
