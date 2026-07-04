@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { cn } from "@/lib/utils";
 import { BaseHandle } from "@/components/handles/BaseHandle";
+import { colorForDataType } from "@/utils/handleTypes";
 
 // Valibot schema for LabeledHandle component
 export const LabeledHandleSchema = v.object({
@@ -39,8 +40,20 @@ export function LabeledHandle(props: LabeledHandleComponentProps) {
     const type = component.handle_type === "input" ? "target" : "source";
     const position = component.handle_type === "input" ? Position.Left : Position.Right;
     const title = component.label + (component.required ? " *" : "");
-    
-    return <LabeledHandle type={type} position={position} id={component.id} title={title} />;
+    const color = colorForDataType(component.dataType);
+    const handleStyle = color
+      ? { backgroundColor: color, borderColor: color }
+      : undefined;
+
+    return (
+      <LabeledHandle
+        type={type}
+        position={position}
+        id={component.id}
+        title={title}
+        style={handleStyle}
+      />
+    );
   }
   
   // Otherwise handle ReactFlow props directly

@@ -14,6 +14,7 @@ import { NodeSidebar } from "./NodeSidebar";
 import type { NodeTemplate, NodesDict, NodeValues } from "./types/schema";
 import { FlowCanvas } from "./components/FlowCanvas";
 import { useAutoLayout } from "./hooks/useAutoLayout";
+import { buildTemplateHandleTypes, makeIsValidConnection } from "./utils/handleTypes";
 import { useExport } from "./hooks/useExport";
 import { useContextMenu } from "./hooks/useContextMenu";
 import { useImageExport, type ImageExportTrigger } from "./hooks/useImageExport";
@@ -189,6 +190,17 @@ function NodeFlowComponent() {
     [setEdges]
   );
 
+  // Typed-connection validation driven by each handle's dataType.
+  const handleTypes = React.useMemo(
+    () => buildTemplateHandleTypes(nodeTemplates),
+    [nodeTemplates]
+  );
+  const isValidConnection = React.useCallback(
+    (connection: Connection | Edge) =>
+      makeIsValidConnection(nodesDict, handleTypes)(connection),
+    [nodesDict, handleTypes]
+  );
+
   const onAddNode = React.useCallback(
     (template: NodeTemplate) => {
       const nodeId = `node-${Date.now()}`;
@@ -269,6 +281,7 @@ function NodeFlowComponent() {
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
+                    isValidConnection={isValidConnection}
                     onNodeContextMenu={onNodeContextMenu}
                     onEdgeContextMenu={onEdgeContextMenu}
                     onPaneClick={onPaneClick}

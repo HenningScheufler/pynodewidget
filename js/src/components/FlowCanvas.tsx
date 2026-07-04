@@ -7,6 +7,7 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  useReactFlow,
 } from "@xyflow/react";
 import type {
   Node,
@@ -38,6 +39,7 @@ interface FlowCanvasProps {
   onExport: () => void;
   onLayoutVertical: () => void;
   onLayoutHorizontal: () => void;
+  isValidConnection?: (connection: Connection | Edge) => boolean;
 }
 
 export function FlowCanvas({
@@ -57,7 +59,22 @@ export function FlowCanvas({
   onExport,
   onLayoutVertical,
   onLayoutHorizontal,
+  isValidConnection,
 }: FlowCanvasProps) {
+  const { fitView } = useReactFlow();
+
+  // Fit the view once after nodes first render (and after the on-mount
+  // auto-layout has repositioned them) so the whole graph is visible.
+  const didFit = React.useRef(false);
+  React.useEffect(() => {
+    if (didFit.current || nodes.length === 0) return;
+    didFit.current = true;
+    const timer = setTimeout(() => {
+      fitView({ padding: 0.2, duration: 0 });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [nodes, fitView]);
+
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow
@@ -70,6 +87,7 @@ export function FlowCanvas({
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
         onPaneClick={onPaneClick}
+        isValidConnection={isValidConnection}
         fitView
         nodesDraggable={true}
         nodesConnectable={true}

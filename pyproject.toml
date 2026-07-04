@@ -44,6 +44,9 @@ notebooks = [
     "jupyterlab>=4.5.0",
     "marimo>=0.18.0",
 ]
+snakemake = [
+    "snakemake>=8.0",
+]
 all = [
     "pynodewidget[dev,docs,notebooks]",
     "pyyaml>=6.0.0",

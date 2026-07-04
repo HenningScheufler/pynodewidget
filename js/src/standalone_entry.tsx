@@ -14,6 +14,7 @@ import type { NodeTemplate, NodesDict, NodeValues } from "./types/schema";
 import { FlowCanvas } from "./components/FlowCanvas";
 import { NodeSidebar } from "./NodeSidebar";
 import { useAutoLayout } from "./hooks/useAutoLayout";
+import { buildTemplateHandleTypes, makeIsValidConnection } from "./utils/handleTypes";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar";
 import {
   SetNodesDictContext,
@@ -48,13 +49,21 @@ function StandaloneFlow({ data }: { data: StandaloneFlowData }) {
     return buildNodeTypes(data.node_templates);
   }, [data.node_templates]);
 
-  // Convert nodesDict to nodes array for ReactFlow
+  // Convert nodesDict to nodes array for ReactFlow, merging in per-node values
+  // so exported/initial field values are rendered (not just used on export).
   const nodes = React.useMemo(() => {
-    return Object.entries(nodesDict).map(([id, nodeData]) => ({
-      id,
-      ...nodeData,
-    }));
-  }, [nodesDict]);
+    return Object.entries(nodesDict).map(([id, nodeData]) => {
+      const existingData = (nodeData as any).data || {};
+      return {
+        id,
+        ...nodeData,
+        data: {
+          ...existingData,
+          values: { ...(existingData.values || {}), ...(nodeValues[id] || {}) },
+        },
+      };
+    });
+  }, [nodesDict, nodeValues]);
 
   const onNodesChange = React.useCallback(
     (changes: NodeChange[]) => {
@@ -182,6 +191,18 @@ function StandaloneFlow({ data }: { data: StandaloneFlowData }) {
 
   const { onLayout } = useAutoLayout(nodes, edges, setNodesArray);
 
+  // Typed-connection validation: only allow connecting ports of the same
+  // dataType (untyped handles stay unconstrained).
+  const handleTypes = React.useMemo(
+    () => buildTemplateHandleTypes(data.node_templates),
+    [data.node_templates]
+  );
+  const isValidConnection = React.useCallback(
+    (connection: Connection | Edge) =>
+      makeIsValidConnection(nodesDict, handleTypes)(connection),
+    [nodesDict, handleTypes]
+  );
+
   const layoutVertical = React.useCallback(() => {
     onLayout("TB");
   }, [onLayout]);
@@ -190,14 +211,18 @@ function StandaloneFlow({ data }: { data: StandaloneFlowData }) {
     onLayout("LR");
   }, [onLayout]);
 
-  // Auto-layout on initial load
+  // Auto-layout on initial load, but only when the nodes don't already carry
+  // explicit positions (respect a layout computed by the caller).
   React.useEffect(() => {
-    if (nodes.length > 0) {
-      // Delay to ensure layout is ready
-      setTimeout(() => {
-        layoutVertical();
-      }, 100);
-    }
+    if (nodes.length === 0) return;
+    const hasPositions = nodes.some(
+      (n) => n.position && (n.position.x !== 0 || n.position.y !== 0)
+    );
+    if (hasPositions) return;
+    // Delay to ensure layout is ready
+    setTimeout(() => {
+      layoutVertical();
+    }, 100);
   }, []); // Run once on mount
 
   const onExport = React.useCallback(() => {
@@ -253,6 +278,7 @@ function StandaloneFlow({ data }: { data: StandaloneFlowData }) {
                     onExport={onExport}
                     onLayoutVertical={layoutVertical}
                     onLayoutHorizontal={layoutHorizontal}
+                    isValidConnection={isValidConnection}
                   />
                 </div>
               </SidebarProvider>
