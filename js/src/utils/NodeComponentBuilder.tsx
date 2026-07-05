@@ -109,7 +109,7 @@ export class NodeComponentBuilder {
       const nodeData = data as unknown as NodeData;
       const setNodeValues = useSetNodeValues();
 
-      const handleInputChange = React.useCallback((key: string, value: PrimitiveFieldValue) => {
+      const handleInputChange = React.useCallback((key: string, value: FieldValue) => {
         setNodeValues(prev => ({
           ...prev,
           [id]: { ...prev[id], [key]: value }

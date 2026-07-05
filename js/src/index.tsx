@@ -44,11 +44,15 @@ export type { BaseHandleProps } from "./components/handles/BaseHandle";
 // Export node builder utilities
 export { NodeComponentBuilder, buildNodeTypes } from "./utils/NodeComponentBuilder";
 
+// Export entry-group component
+export { EntryGroupComponent } from "./components/EntryGroupComponent";
+
 // Export core types from schema
-export type { 
+export type {
   // Value types
   FieldValue,
   PrimitiveFieldValue,
+  EntryGroupValue,
   // Component types (from ComponentFactory)
   ComponentType,
   Handle,

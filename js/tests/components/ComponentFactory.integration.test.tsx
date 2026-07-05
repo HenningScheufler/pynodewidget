@@ -74,7 +74,7 @@ describe("ComponentFactory Integration", () => {
   });
 
   describe("Type Safety", () => {
-    it("should handle all 13 component types", () => {
+    it("should handle all 14 component types", () => {
       // This test ensures we have coverage for all component types
       const allTypes = [
         "base-handle",
@@ -90,9 +90,10 @@ describe("ComponentFactory Integration", () => {
         "divider",
         "spacer",
         "grid-layout",
+        "entry-group",
       ] as const;
 
-      expect(allTypes).toHaveLength(13);
+      expect(allTypes).toHaveLength(14);
 
       // Verify each type can be rendered
       allTypes.forEach((type) => {
@@ -169,6 +170,14 @@ describe("ComponentFactory Integration", () => {
               columns: ["1fr"],
               cells: [],
             };
+            break;
+          case "entry-group":
+            component = {
+              id: "entry-group-test",
+              type: "entry-group",
+              fields: [],
+              value: { selected: "a", entries: { a: {} } },
+            } as ComponentType;
             break;
         }
 

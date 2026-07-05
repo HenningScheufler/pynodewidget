@@ -6,7 +6,7 @@
  */
 
 import * as v from "valibot";
-import type { PrimitiveFieldValue } from "../types/schema";
+import type { FieldValue } from "../types/schema";
 
 // Import component schemas
 import { BaseHandle, BaseHandleSchema } from "./handles/BaseHandle";
@@ -22,13 +22,14 @@ import { FooterComponent, FooterComponentSchema } from "./FooterComponent";
 import { ButtonComponent, ButtonComponentSchema } from "./ButtonComponent";
 import { DividerComponent, DividerComponentSchema } from "./DividerComponent";
 import { SpacerComponent, SpacerComponentSchema } from "./SpacerComponent";
-import { 
-  GridLayoutComponent, 
-  GridCoordinatesSchema, 
+import {
+  GridLayoutComponent,
+  GridCoordinatesSchema,
   CellLayoutSchema,
   type GridCell,
   type NodeGrid,
 } from "./layouts/GridLayoutComponent";
+import { EntryGroupComponent } from "./EntryGroupComponent";
 
 // Define ComponentType schema first (without grid-layout)
 const BaseComponentTypeSchema = v.variant("type", [
@@ -68,6 +69,32 @@ export const GridLayoutComponentSchema = v.object({
   className: v.optional(v.string()),
 });
 
+// EntryGroupComponent schema: `fields` recursively references ComponentType,
+// so its array schema is annotated explicitly (like GridCellSchema) to break
+// the circular type inference; the object schema itself must stay a plain
+// ObjectSchema so it can be a v.variant option.
+// The output type is any[] (not ComponentType[]) for the same reason
+// GridCell.components is any[]: an inferred reference would be circular.
+const EntryGroupFieldsSchema: v.BaseSchema<
+  unknown,
+  any[],
+  v.BaseIssue<unknown>
+> = v.array(v.lazy(() => ComponentTypeSchema));
+
+export const EntryGroupComponentSchema = v.object({
+  id: v.string(),
+  type: v.literal("entry-group"),
+  label: v.optional(v.string()),
+  fields: EntryGroupFieldsSchema,
+  value: v.optional(v.object({
+    selected: v.string(),
+    entries: v.record(
+      v.string(),
+      v.record(v.string(), v.union([v.string(), v.number(), v.boolean(), v.null()]))
+    ),
+  })),
+});
+
 // Complete ComponentType schema including grid-layout
 export const ComponentTypeSchema = v.variant("type", [
   BaseHandleSchema,
@@ -84,6 +111,7 @@ export const ComponentTypeSchema = v.variant("type", [
   DividerComponentSchema,
   SpacerComponentSchema,
   GridLayoutComponentSchema,
+  EntryGroupComponentSchema,
 ]);
 
 export type ComponentType = v.InferOutput<typeof ComponentTypeSchema>;
@@ -110,7 +138,7 @@ export type { NodeGrid, GridCell };
 interface ComponentFactoryProps {
   component: ComponentType;
   nodeId: string;
-  onValueChange?: (componentId: string, value: PrimitiveFieldValue) => void;
+  onValueChange?: (componentId: string, value: FieldValue) => void;
 }
 
 /**
@@ -159,7 +187,10 @@ export function ComponentFactory({ component, nodeId, onValueChange }: Component
     
     case "grid-layout":
       return <GridLayoutComponent component={component} nodeId={nodeId} onValueChange={onValueChange} />;
-    
+
+    case "entry-group":
+      return <EntryGroupComponent component={component} nodeId={nodeId} onValueChange={onValueChange} />;
+
     default:
       // TypeScript exhaustiveness check - if we reach here, we've handled all cases
       const _exhaustiveCheck: never = component;

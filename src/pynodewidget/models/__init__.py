@@ -23,6 +23,9 @@ from .components import (
     SpacerComponent,
     # Layouts
     GridLayoutComponent,
+    # Entry groups
+    EntryGroupComponent,
+    EntryGroupValue,
 )
 
 # Grid system
@@ -45,6 +48,7 @@ from .node import (
 GridLayoutComponent.model_rebuild()
 GridCell.model_rebuild()
 NodeDefinition.model_rebuild()
+EntryGroupComponent.model_rebuild()
 
 __all__ = [
     # Components
@@ -65,6 +69,8 @@ __all__ = [
     "DividerComponent",
     "SpacerComponent",
     "GridLayoutComponent",
+    "EntryGroupComponent",
+    "EntryGroupValue",
     # Grid
     "GridCoordinates",
     "CellLayout",

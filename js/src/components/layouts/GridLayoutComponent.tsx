@@ -1,6 +1,6 @@
 import React from "react";
 import * as v from "valibot";
-import type { PrimitiveFieldValue } from "@/types/schema";
+import type { FieldValue } from "@/types/schema";
 import { GridCellComponent } from "./GridCellComponent";
 
 // Valibot schema for GridCoordinates
@@ -56,7 +56,7 @@ export type GridLayoutComponent = {
 interface GridLayoutComponentProps {
   component: GridLayoutComponent;
   nodeId: string;
-  onValueChange?: (id: string, value: PrimitiveFieldValue) => void;
+  onValueChange?: (id: string, value: FieldValue) => void;
 }
 
 /**

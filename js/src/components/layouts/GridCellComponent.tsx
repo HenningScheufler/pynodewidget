@@ -1,11 +1,11 @@
 import React from "react";
-import type { GridCell, PrimitiveFieldValue } from "@/types/schema";
+import type { FieldValue, GridCell } from "@/types/schema";
 import { ComponentFactory } from "../ComponentFactory";
 
 interface GridCellComponentProps {
   cell: GridCell;
   nodeId: string;
-  onValueChange?: (id: string, value: PrimitiveFieldValue) => void;
+  onValueChange?: (id: string, value: FieldValue) => void;
 }
 
 /**

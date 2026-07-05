@@ -9,6 +9,7 @@ from .handles import BaseHandle, LabeledHandle, ButtonHandle, Handle
 from .fields import TextField, NumberField, BoolField, SelectField, ProgressField, Field_
 from .ui import HeaderComponent, ButtonComponent, DividerComponent, SpacerComponent
 from .layouts import GridLayoutComponent
+from .entry_group import EntryGroupComponent, EntryGroupValue
 
 # Discriminated union - matches TypeScript ComponentType exactly
 ComponentType = Annotated[
@@ -26,6 +27,7 @@ ComponentType = Annotated[
         DividerComponent,
         SpacerComponent,
         GridLayoutComponent,
+        EntryGroupComponent,
     ],
     Field(discriminator="type")
 ]
@@ -52,4 +54,7 @@ __all__ = [
     "SpacerComponent",
     # Layouts
     "GridLayoutComponent",
+    # Entry groups
+    "EntryGroupComponent",
+    "EntryGroupValue",
 ]

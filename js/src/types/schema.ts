@@ -77,6 +77,15 @@ export interface HandleConfig {
 export type PrimitiveFieldValue = string | number | boolean | null;
 
 /**
+ * EntryGroupValue - value of an entry-group component: a named set of entries
+ * sharing one field layout, plus the currently selected entry name.
+ */
+export type EntryGroupValue = {
+  selected: string;
+  entries: Record<string, Record<string, PrimitiveFieldValue>>;
+};
+
+/**
  * Configuration for node styling
  */
 export interface NodeStyleConfig {
@@ -129,9 +138,10 @@ export interface ContextMenuState {
 // =============================================================================
 
 /**
- * FieldValue - Alias for primitive field values
+ * FieldValue - Any value a component can hold: a primitive, or the grouped
+ * entries object of an entry-group component.
  */
-export type FieldValue = PrimitiveFieldValue;
+export type FieldValue = PrimitiveFieldValue | EntryGroupValue;
 
 /**
  * NodeDefinition - Template-level visual structure (immutable, shared)
@@ -154,7 +164,7 @@ export interface NodeTemplate {
   icon?: string;                         // Icon (emoji or path)
   category?: string;                     // Category for organization
   definition: NodeDefinition;            // Visual structure (grid + style)
-  defaultValues: Record<string, PrimitiveFieldValue>; // Default field values
+  defaultValues: Record<string, FieldValue>; // Default field values
 }
 
 /**
@@ -166,7 +176,7 @@ export interface NodeInstance {
   id: string;                            // Unique instance ID
   type: string;                          // References a NodeTemplate.type
   position: { x: number; y: number };    // Position in canvas
-  values: Record<string, PrimitiveFieldValue>; // Field values
+  values: Record<string, FieldValue>;    // Field values
 }
 
 /**
@@ -179,4 +189,4 @@ export type NodesDict = Record<string, Node>;
  * NodeValues - Field values keyed by node ID
  * Synced separately from node structure for efficiency
  */
-export type NodeValues = Record<string, Record<string, PrimitiveFieldValue>>;
+export type NodeValues = Record<string, Record<string, FieldValue>>;

@@ -8,7 +8,7 @@
  */
 
 import React from "react";
-import type { NodeGrid, NodeStyleConfig, PrimitiveFieldValue } from "../types/schema";
+import type { FieldValue, NodeGrid, NodeStyleConfig } from "../types/schema";
 
 /**
  * Node data interface for runtime rendering
@@ -18,7 +18,7 @@ export interface NodeData {
   label: string;
   grid: NodeGrid;
   style?: NodeStyleConfig;
-  values: Record<string, PrimitiveFieldValue>;
+  values: Record<string, FieldValue>;
 }
 
 /**
@@ -27,7 +27,7 @@ export interface NodeData {
 export interface NodeDataContextValue {
   nodeId: string;
   nodeData: NodeData;
-  onValueChange: (key: string, value: PrimitiveFieldValue) => void;
+  onValueChange: (key: string, value: FieldValue) => void;
 }
 
 /**
