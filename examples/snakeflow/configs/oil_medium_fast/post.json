@@ -1,0 +1,6 @@
+{
+  "solver": {
+    "scheme": "explicit",
+    "tol": 0.001
+  }
+}

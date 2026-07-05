@@ -1,0 +1,14 @@
+{
+  "material": {
+    "density": 900.0,
+    "viscosity": 0.05
+  },
+  "mesh": {
+    "nx": 200,
+    "ny": 200
+  },
+  "solver": {
+    "scheme": "implicit",
+    "tol": 1e-06
+  }
+}

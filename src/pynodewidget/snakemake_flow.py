@@ -21,15 +21,22 @@ This is intentionally a small first cut. Growth points are marked with ``TODO``.
 
 from __future__ import annotations
 
+import itertools
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 import colorsys
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-from .widget import NodeFlowWidget
-from .grid_layouts import create_three_column_grid
-from .models import HeaderComponent, LabeledHandle, TextField
+from .widget import NodeFlowWidget, _to_plain_dict
+from .grid_layouts import create_three_column_grid, json_schema_to_components
+from .models import (
+    EntryGroupComponent,
+    EntryGroupValue,
+    HeaderComponent,
+    LabeledHandle,
+    TextField,
+)
 
 __all__ = [
     "Rule",
@@ -43,11 +50,28 @@ __all__ = [
     "ParamSource",
     "sweep_to_flow",
     "sweep_to_snakefile",
+    "RuleSpec",
+    "RuleRegistry",
+    "registry_to_flow",
+    "build_pattern_edges",
+    "autowire",
+    "SweepDesign",
+    "flow_to_sweep",
+    "sources_from_params_yaml",
+    "paramspace_snakefile",
+    "SweepExport",
+    "export_sweep",
 ]
 
 #: Prefix for the per-rule node type (keeps rule names clear of reserved names
 #: like ``input``/``output``).
 RULE_TYPE_PREFIX = "rule_"
+
+#: Prefix for the per-dimension parameter-block node type.
+BLOCK_TYPE_PREFIX = "block_"
+
+#: Component id of the entry group inside a parameter-source node.
+GROUP_COMPONENT_ID = "entries"
 
 
 def data_type_of(filename: str) -> str:
@@ -340,18 +364,57 @@ def _register_rule_type(widget: NodeFlowWidget, rule: Rule) -> None:
 
 def _build_edges(rules: List[Rule]) -> List[dict]:
     """Connect a producer's output port to a consumer's input port per file."""
+    return build_pattern_edges(rules)
+
+
+def _normalize_pattern(pattern: str) -> str:
+    """Replace every ``{name}`` wildcard with the fixed token ``{*}``.
+
+    Two file patterns are considered the same file if their normalized forms
+    are equal, so wildcard names unify positionally: ``results/{case}/out.dat``
+    matches ``results/{c}/out.dat`` but not ``results/{case}/other.dat``. A
+    pattern without wildcards degenerates to plain string equality.
+    """
+    return _WILDCARD_RE.sub("{*}", pattern)
+
+
+def build_pattern_edges(
+    rules: Sequence[Rule], ids: Optional[Sequence[str]] = None
+) -> List[dict]:
+    """Connect producer output ports to consumer input ports by file pattern.
+
+    Generalizes exact filename matching to wildcard patterns via
+    :func:`_normalize_pattern`. Each edge's handles keep the raw pattern of the
+    respective side (handle ids are node-local).
+
+    Args:
+        rules: The rules to wire up.
+        ids: Optional node id per rule (parallel to ``rules``); defaults to the
+            rule names. Pass canvas node ids when wiring node instances.
+
+    Returns:
+        Edge dicts in deterministic (rule, file) order.
+    """
+    if ids is None:
+        ids = [rule.name for rule in rules]
+
+    producers: Dict[str, Tuple[str, str]] = {}
+    for rule, node_id in zip(rules, ids):
+        for out in rule.output:
+            producers[_normalize_pattern(out)] = (node_id, out)
+
     edges: List[dict] = []
-    producers = {out: rule.name for rule in rules for out in rule.output}
-    for consumer in rules:
-        for infile in _dedup(consumer.input):
-            producer = producers.get(infile)
-            if producer is None or producer == consumer.name:
+    for rule, node_id in zip(rules, ids):
+        for infile in _dedup(rule.input):
+            hit = producers.get(_normalize_pattern(infile))
+            if hit is None or hit[0] == node_id:
                 continue
+            source_id, out_pattern = hit
             edges.append({
-                "id": f"{producer}->{consumer.name}:{infile}",
-                "source": producer,
-                "target": consumer.name,
-                "sourceHandle": _out_handle_id(infile),
+                "id": f"{source_id}->{node_id}:{infile}",
+                "source": source_id,
+                "target": node_id,
+                "sourceHandle": _out_handle_id(out_pattern),
                 "targetHandle": _in_handle_id(infile),
             })
     return edges
@@ -658,11 +721,13 @@ def _wildcards_of_rule(rule: Rule, source_names: List[str]) -> List[str]:
     return found
 
 
-def _first_wildcard(filename: str, source_names: List[str]) -> Optional[str]:
+def _wildcards_in_file(filename: str, source_names: List[str]) -> List[str]:
+    """Sweep wildcard names appearing in a single file pattern, in order."""
+    found: List[str] = []
     for match in _WILDCARD_RE.findall(filename):
-        if match in source_names:
-            return match
-    return None
+        if match in source_names and match not in found:
+            found.append(match)
+    return found
 
 
 def sweep_to_snakefile(sources: List[ParamSource], rules: List[Rule]) -> str:
@@ -708,11 +773,10 @@ def _sweep_input_lines(
     out: List[str] = []
     for i, f in enumerate(files):
         comma = "," if i < len(files) - 1 else ""
-        wildcard = _first_wildcard(f, source_names)
-        if aggregate and wildcard:
-            out.append(
-                f'        expand("{f}", {wildcard}={_list_var(wildcard)}){comma}'
-            )
+        wildcards = _wildcards_in_file(f, source_names)
+        if aggregate and wildcards:
+            kwargs = ", ".join(f"{w}={_list_var(w)}" for w in wildcards)
+            out.append(f'        expand("{f}", {kwargs}){comma}')
         else:
             out.append(f'        "{f}"{comma}')
     return out
@@ -741,35 +805,58 @@ def sweep_to_flow(
     for rule in rules:
         _register_sweep_rule_type(widget, rule, source_names)
 
-    edges = _build_edges(rules)
-    for source in sources:
-        for rule in rules:
-            if source.name in _wildcards_of_rule(rule, source_names):
-                edges.append({
-                    "id": f"param:{source.name}->{rule.name}",
-                    "source": _source_node_id(source.name),
-                    "target": rule.name,
-                    "sourceHandle": "out",
-                    "targetHandle": _param_handle_id(source.name),
-                })
+    file_edges = _build_edges(rules)
+    edges = list(file_edges)
 
-    node_ids = [_source_node_id(s.name) for s in sources] + [r.name for r in rules]
-    positions = _layered_positions(
-        node_ids, [(e["source"], e["target"]) for e in edges], x_step, y_step
+    consumers_of: dict = {}
+    for source in sources:
+        using = [r.name for r in rules if source.name in _wildcards_of_rule(r, source_names)]
+        consumers_of[source.name] = using
+        for rule_name in using:
+            edges.append({
+                "id": f"param:{source.name}->{rule_name}",
+                "source": _source_node_id(source.name),
+                "target": rule_name,
+                "sourceHandle": "out",
+                "targetHandle": _param_handle_id(source.name),
+            })
+
+    # Lay out the rules by their file dependencies only, then dock each source
+    # next to the rule that introduces its wildcard (its earliest consumer), so
+    # the source sits close to where its {wildcard} enters the pipeline.
+    rule_ids = [r.name for r in rules]
+    rule_pos = _layered_positions(
+        rule_ids, [(f["source"], f["target"]) for f in file_edges], x_step, y_step
     )
+
+    source_pos: dict = {}
+    stacked: dict = {}
+    for source in sources:
+        sid = _source_node_id(source.name)
+        using = consumers_of[source.name]
+        if using:
+            earliest = min(using, key=lambda n: (rule_pos[n]["x"], rule_pos[n]["y"]))
+            k = stacked.get(earliest, 0)
+            stacked[earliest] = k + 1
+            source_pos[sid] = {
+                "x": rule_pos[earliest]["x"] - int(x_step * 0.55),
+                "y": rule_pos[earliest]["y"] - int(y_step * (0.85 + k)),
+            }
+        else:
+            source_pos[sid] = {"x": -x_step, "y": 0}
 
     nodes = {}
     for source in sources:
         sid = _source_node_id(source.name)
         nodes[sid] = {
             "type": _source_type_name(source.name),
-            "position": positions[sid],
+            "position": source_pos[sid],
             "data": {},
         }
     for rule in rules:
         nodes[rule.name] = {
             "type": _type_name(rule.name),
-            "position": positions[rule.name],
+            "position": rule_pos[rule.name],
             "data": {},
         }
     widget.nodes = nodes
@@ -862,4 +949,615 @@ def _register_sweep_rule_type(
             center_components=center,
             right_components=output_handles or None,
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule registry: predefined, pydantic-configured rules as a drag-in palette
+#
+# The on-disk data layout this builds toward (see snakemake_paramspace.py):
+#
+#   sweep.csv      case,mesh,solver          (rows = combinations)
+#   params.yaml    mesh: {fine: {...}, ...}  (named blocks per dimension)
+#   configs/       {case}/{rule}.json        (materialized per-rule configs)
+#
+# In the editor, each RuleSpec is one node template; each parameter dimension
+# is a "block" template whose fields come from the dimension's pydantic model.
+# The user drags nodes in, edits block fields, autowire() draws the edges, and
+# export_sweep() writes the runnable workflow directory.
+# ---------------------------------------------------------------------------
+
+def _cfg_handle_id(dim: str) -> str:
+    return f"cfg:{dim}"
+
+
+def _block_type_name(dim: str) -> str:
+    return f"{BLOCK_TYPE_PREFIX}{dim}"
+
+
+@dataclass
+class RuleSpec:
+    """A predefined Snakemake rule with pydantic-modelled parameters.
+
+    Attributes:
+        name: The rule name.
+        input: Input file patterns (may contain wildcards like ``{case}``).
+        output: Output file patterns.
+        shell: The shell command, if any.
+        params_models: Parameter dimensions used by this rule, mapped to the
+            pydantic model that validates each dimension's blocks.
+        icon: Sidebar / header icon.
+    """
+
+    name: str
+    input: List[str] = field(default_factory=list)
+    output: List[str] = field(default_factory=list)
+    shell: Optional[str] = None
+    params_models: Dict[str, type] = field(default_factory=dict)
+    icon: str = "🐍"
+
+    @property
+    def dims(self) -> List[str]:
+        """The parameter dimensions this rule uses, in declaration order."""
+        return list(self.params_models)
+
+    def config_input(
+        self, configs_dir: str = "configs", case_wildcard: str = "case"
+    ) -> Optional[str]:
+        """The rule's materialized config pattern, or None without parameters."""
+        if not self.params_models:
+            return None
+        return f"{configs_dir}/{{{case_wildcard}}}/{self.name}.json"
+
+    def as_rule(
+        self,
+        configs_dir: Optional[str] = None,
+        case_wildcard: str = "case",
+    ) -> Rule:
+        """Adapt to a plain :class:`Rule`.
+
+        Args:
+            configs_dir: If given, the materialized config JSON is prepended to
+                the inputs (as in the generated Snakefile).
+            case_wildcard: The case wildcard name.
+        """
+        inputs = list(self.input)
+        if configs_dir is not None:
+            cfg = self.config_input(configs_dir, case_wildcard)
+            if cfg is not None:
+                inputs.insert(0, cfg)
+        return Rule(
+            name=self.name, input=inputs, output=list(self.output), shell=self.shell
+        )
+
+
+@dataclass
+class RuleRegistry:
+    """The palette of predefined rules and their parameter dimensions.
+
+    Attributes:
+        models_module: Import path of the module holding the pydantic models
+            (e.g. ``"myproject.models"``); the generated Snakefile imports the
+            models from there at workflow runtime.
+        rules: The registered rules, keyed by name.
+        case_wildcard: The wildcard naming one sweep case.
+    """
+
+    models_module: str
+    rules: Dict[str, RuleSpec] = field(default_factory=dict)
+    case_wildcard: str = "case"
+
+    def add(self, spec: RuleSpec) -> "RuleRegistry":
+        """Register a rule (chainable). Raises on duplicate names."""
+        if spec.name in self.rules:
+            raise ValueError(f"rule '{spec.name}' is already registered")
+        self.rules[spec.name] = spec
+        return self
+
+    def dims(self) -> Dict[str, type]:
+        """All parameter dimensions across rules, mapped to their models.
+
+        Raises:
+            ValueError: If two rules bind the same dimension to different models.
+        """
+        out: Dict[str, type] = {}
+        for spec in self.rules.values():
+            for dim, model in spec.params_models.items():
+                if dim in out and out[dim] is not model:
+                    raise ValueError(
+                        f"dimension '{dim}' is bound to conflicting models: "
+                        f"{out[dim].__name__} and {model.__name__}"
+                    )
+                out[dim] = model
+        return out
+
+
+def registry_to_flow(
+    registry: RuleRegistry, widget: Optional[NodeFlowWidget] = None
+) -> NodeFlowWidget:
+    """Register the palette: one template per rule, one per parameter dimension.
+
+    The canvas starts empty — the user adds nodes from the sidebar. Connect
+    them with :func:`autowire` and export with :func:`export_sweep`.
+    """
+    if widget is None:
+        widget = NodeFlowWidget()
+    for spec in registry.rules.values():
+        _register_rule_spec_type(widget, spec)
+    for dim, model in registry.dims().items():
+        _register_block_type(widget, dim, model)
+    return widget
+
+
+def _register_rule_spec_type(widget: NodeFlowWidget, spec: RuleSpec) -> None:
+    """Register a rule node type: config port per dimension + typed file ports."""
+    type_name = _type_name(spec.name)
+    if any(t.get("type") == type_name for t in widget.node_templates):
+        return
+
+    cfg_handles = [
+        LabeledHandle(
+            id=_cfg_handle_id(dim),
+            label=dim,
+            handle_type="input",
+            dataType=_cfg_handle_id(dim),
+            required=True,
+        )
+        for dim in spec.dims
+    ]
+    input_handles = [
+        LabeledHandle(
+            id=_in_handle_id(f),
+            label=_basename(f),
+            handle_type="input",
+            dataType=data_type_of(f),
+            required=True,
+        )
+        for f in _dedup(spec.input)
+    ]
+    output_handles = [
+        LabeledHandle(
+            id=_out_handle_id(f),
+            label=_basename(f),
+            handle_type="output",
+            dataType=data_type_of(f),
+        )
+        for f in _dedup(spec.output)
+    ]
+
+    center = [HeaderComponent(id="header", label=spec.name, icon=spec.icon)]
+    if spec.shell is not None:
+        center.append(TextField(id="shell", label="shell", value=spec.shell))
+
+    widget.add_node_type(
+        type_name=type_name,
+        label=spec.name,
+        icon=spec.icon,
+        description=f"Snakemake rule '{spec.name}'",
+        grid_layout=create_three_column_grid(
+            left_components=(cfg_handles + input_handles) or None,
+            center_components=center,
+            right_components=output_handles or None,
+        ),
+    )
+
+
+def _register_block_type(widget: NodeFlowWidget, dim: str, model: type) -> None:
+    """Register a grouped parameter-source node type for one dimension.
+
+    The node is a view into the dimension's ``params.yaml`` section: an entry
+    group whose entries are the named parameter blocks (dropdown to switch,
+    add/rename/delete in the UI) and whose fields come from the pydantic
+    model's JSON schema. The typed ``cfg:{dim}`` output port only connects to
+    rules that declare the dimension.
+    """
+    type_name = _block_type_name(dim)
+    if any(t.get("type") == type_name for t in widget.node_templates):
+        return
+
+    fields = json_schema_to_components(model.model_json_schema())
+    default_entry = {f.id: f.value for f in fields}
+    center = [
+        HeaderComponent(id="header", label=dim, icon="🧩", bgColor="#8b5cf6"),
+        EntryGroupComponent(
+            id=GROUP_COMPONENT_ID,
+            label="blocks",
+            fields=fields,
+            value=EntryGroupValue(selected=dim, entries={dim: default_entry}),
+        ),
+    ]
+
+    widget.add_node_type(
+        type_name=type_name,
+        label=dim,
+        icon="🧩",
+        description=f"Parameter blocks for dimension '{dim}' ({model.__name__})",
+        grid_layout=create_three_column_grid(
+            center_components=center,
+            right_components=[
+                LabeledHandle(
+                    id="out",
+                    label=dim,
+                    handle_type="output",
+                    dataType=_cfg_handle_id(dim),
+                ),
+            ],
+        ),
+    )
+
+
+def _canvas_nodes(widget: NodeFlowWidget, registry: RuleRegistry):
+    """Resolve canvas nodes against the registry.
+
+    Returns:
+        ``(rule_nodes, block_nodes)`` where ``rule_nodes`` is a list of
+        ``(node_id, RuleSpec)`` and ``block_nodes`` maps each dimension to its
+        block node ids.
+
+    Raises:
+        ValueError: If a rule- or block-typed node is unknown to the registry.
+    """
+    dims = registry.dims()
+    rule_nodes: List[Tuple[str, RuleSpec]] = []
+    block_nodes: Dict[str, List[str]] = {}
+    for node_id, node in widget.nodes.items():
+        type_name = node.get("type", "")
+        if type_name.startswith(RULE_TYPE_PREFIX):
+            name = type_name[len(RULE_TYPE_PREFIX):]
+            spec = registry.rules.get(name)
+            if spec is None:
+                raise ValueError(f"node '{node_id}': unknown rule type '{type_name}'")
+            rule_nodes.append((node_id, spec))
+        elif type_name.startswith(BLOCK_TYPE_PREFIX):
+            dim = type_name[len(BLOCK_TYPE_PREFIX):]
+            if dim not in dims:
+                raise ValueError(
+                    f"node '{node_id}': unknown parameter dimension '{dim}'"
+                )
+            block_nodes.setdefault(dim, []).append(node_id)
+    return rule_nodes, block_nodes
+
+
+def autowire(widget: NodeFlowWidget, registry: RuleRegistry) -> List[dict]:
+    """Wire up the canvas: file-pattern edges plus block -> rule config edges.
+
+    File edges connect matching output/input patterns across the rule nodes on
+    the canvas (see :func:`build_pattern_edges`); config edges connect every
+    parameter-block node to every rule node using its dimension. Sets
+    ``widget.edges`` and returns them.
+    """
+    rule_nodes, block_nodes = _canvas_nodes(widget, registry)
+
+    edges = build_pattern_edges(
+        [spec.as_rule() for _, spec in rule_nodes],
+        ids=[node_id for node_id, _ in rule_nodes],
+    )
+
+    for dim in sorted(block_nodes):
+        for target_id, spec in rule_nodes:
+            if dim not in spec.params_models:
+                continue
+            for source_id in block_nodes[dim]:
+                edges.append({
+                    "id": f"{source_id}->{target_id}:{_cfg_handle_id(dim)}",
+                    "source": source_id,
+                    "target": target_id,
+                    "sourceHandle": "out",
+                    "targetHandle": _cfg_handle_id(dim),
+                })
+
+    widget.edges = edges
+    return edges
+
+
+# ---------------------------------------------------------------------------
+# Graph -> sweep data -> generated workflow directory
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SweepDesign:
+    """The sweep read back out of the canvas.
+
+    Attributes:
+        rules: The distinct rules on the canvas (canvas order).
+        blocks: params.yaml content: ``{dim: {block_name: params}}``.
+        combinations: sweep.csv rows (each including the case column).
+    """
+
+    rules: List[RuleSpec]
+    blocks: Dict[str, Dict[str, dict]]
+    combinations: List[Dict[str, str]]
+
+
+def flow_to_sweep(
+    widget: NodeFlowWidget,
+    registry: RuleRegistry,
+    combinations: Optional[List[Dict[str, str]]] = None,
+) -> SweepDesign:
+    """Extract the sweep design from the canvas.
+
+    Each source node's entry group (``widget.node_values``) holds the named
+    parameter blocks of one dimension; every entry is validated against the
+    dimension's pydantic model. Unless ``combinations`` is given, the sweep is
+    the full cross product of the block names per dimension (case names join
+    the block names in sorted-dimension order).
+
+    Raises:
+        ValueError: On unknown node types, empty/duplicate block names, failed
+            pydantic validation, or a canvas rule whose dimension has no block.
+    """
+    dims = registry.dims()
+    rule_nodes, block_nodes = _canvas_nodes(widget, registry)
+
+    rules: List[RuleSpec] = []
+    for _, spec in rule_nodes:
+        if spec not in rules:
+            rules.append(spec)
+
+    blocks: Dict[str, Dict[str, dict]] = {}
+    for dim in sorted(block_nodes):
+        model = dims[dim]
+        dim_blocks = blocks.setdefault(dim, {})
+        for node_id in block_nodes[dim]:
+            values = _to_plain_dict(widget.node_values.get(node_id, {}) or {})
+            group = values.get(GROUP_COMPONENT_ID) or {}
+            entries = group.get("entries") or {}
+            if not entries:
+                raise ValueError(
+                    f"node '{node_id}' ({dim}): no parameter blocks defined"
+                )
+            for name, params in entries.items():
+                name = str(name).strip()
+                if not name:
+                    raise ValueError(
+                        f"node '{node_id}' ({dim}): the block name must not "
+                        f"be empty"
+                    )
+                if name in dim_blocks:
+                    raise ValueError(
+                        f"duplicate block name '{name}' for dimension '{dim}'"
+                    )
+                try:
+                    dim_blocks[name] = model.model_validate(
+                        params or {}
+                    ).model_dump(mode="json")
+                except Exception as e:
+                    raise ValueError(
+                        f"node '{node_id}': block '{dim}.{name}' failed "
+                        f"validation against {model.__name__}: {e}"
+                    ) from e
+
+    for _, spec in rule_nodes:
+        for dim in spec.dims:
+            if dim not in blocks:
+                raise ValueError(
+                    f"rule '{spec.name}' uses dimension '{dim}' but the canvas "
+                    f"has no '{dim}' parameter block"
+                )
+
+    if combinations is None:
+        dim_order = sorted(blocks)
+        names_per_dim = [sorted(blocks[dim]) for dim in dim_order]
+        combinations = []
+        for combo in itertools.product(*names_per_dim):
+            case = "_".join(combo) or "default"
+            row = {registry.case_wildcard: case}
+            row.update(zip(dim_order, combo))
+            combinations.append(row)
+
+    return SweepDesign(rules=rules, blocks=blocks, combinations=combinations)
+
+
+def sources_from_params_yaml(
+    widget: NodeFlowWidget,
+    registry: RuleRegistry,
+    path: Union[str, Path],
+    *,
+    x: int = 0,
+    y: int = 0,
+    x_step: int = 430,
+) -> Dict[str, str]:
+    """Seed one grouped source node per dimension from an existing params.yaml.
+
+    Makes the canvas a real view into the file: every top-level key becomes
+    (or updates) the source node ``src-{dim}``, whose entry group holds the
+    dimension's named blocks (validated against the registry's pydantic
+    models). Together with :func:`export_sweep` this round-trips params.yaml
+    through the editor.
+
+    Args:
+        widget: The widget to populate (templates are registered if missing).
+        registry: The rule registry providing the dimensions and models.
+        path: Path to the params.yaml file.
+        x: X position of the first source node.
+        y: Y position of the source nodes.
+        x_step: Horizontal spacing between source nodes.
+
+    Returns:
+        Mapping of dimension name to the node id created/updated for it.
+
+    Raises:
+        ValueError: If the file contains a dimension unknown to the registry,
+            or an entry fails validation against its dimension's model.
+    """
+    from .snakemake_paramspace import read_params_yaml
+
+    dims = registry.dims()
+    data = read_params_yaml(path)
+
+    node_ids: Dict[str, str] = {}
+    new_nodes = dict(widget.nodes)
+    for i, (dim, entries) in enumerate(data.items()):
+        model = dims.get(dim)
+        if model is None:
+            raise ValueError(
+                f"params file {path}: unknown dimension '{dim}' "
+                f"(registry dimensions: {sorted(dims)})"
+            )
+        validated: Dict[str, dict] = {}
+        for name, params in entries.items():
+            try:
+                validated[name] = model.model_validate(
+                    params or {}
+                ).model_dump(mode="json")
+            except Exception as e:
+                raise ValueError(
+                    f"params file {path}: '{dim}.{name}' failed validation "
+                    f"against {model.__name__}: {e}"
+                ) from e
+
+        _register_block_type(widget, dim, model)
+        node_id = f"src-{dim}"
+        node_ids[dim] = node_id
+        if node_id not in new_nodes:
+            new_nodes[node_id] = {
+                "type": _block_type_name(dim),
+                "position": {"x": x + i * x_step, "y": y},
+                "data": {},
+            }
+        widget.node_values[node_id] = {
+            GROUP_COMPONENT_ID: {
+                "selected": next(iter(validated), ""),
+                "entries": validated,
+            }
+        }
+    widget.nodes = new_nodes
+    return node_ids
+
+
+def _rule_dims_of(design: SweepDesign) -> Dict[str, List[str]]:
+    """Materialization map: rule name -> sorted dimensions (parametrized only)."""
+    return {
+        spec.name: sorted(spec.params_models)
+        for spec in design.rules
+        if spec.params_models
+    }
+
+
+def paramspace_snakefile(
+    registry: RuleRegistry,
+    design: SweepDesign,
+    *,
+    sweep_csv: str = "sweep.csv",
+    params_yaml: str = "params.yaml",
+    configs_dir: str = "configs",
+) -> str:
+    """Generate the Snakefile for a sweep design.
+
+    The preamble imports :class:`~pynodewidget.snakemake_paramspace.YamlParamSpace`
+    and the pydantic models from ``registry.models_module`` (that module must be
+    importable in the workflow environment, e.g. via installation or
+    ``PYTHONPATH``), builds the space, and materializes the per-case configs at
+    parse time. Parametrized rules read their materialized JSON as their first
+    input; aggregator rules (no output) expand case-wildcard inputs over
+    ``space.cases``.
+    """
+    case = registry.case_wildcard
+    used_dims: Dict[str, type] = {}
+    for spec in design.rules:
+        used_dims.update(spec.params_models)
+
+    lines: List[str] = [
+        "from pynodewidget.snakemake_paramspace import YamlParamSpace",
+    ]
+    model_names = sorted({model.__name__ for model in used_dims.values()})
+    if model_names:
+        lines.append(f"from {registry.models_module} import {', '.join(model_names)}")
+    lines.append("")
+
+    models_arg = ", ".join(
+        f'"{dim}": {model.__name__}' for dim, model in sorted(used_dims.items())
+    )
+    space_args = f'"{sweep_csv}", "{params_yaml}", models={{{models_arg}}}'
+    if case != "case":
+        space_args += f', case_col="{case}"'
+    lines.append(f"space = YamlParamSpace({space_args})")
+    rule_dims = _rule_dims_of(design)
+    if rule_dims:
+        lines.append(f'space.materialize({rule_dims!r}, out_dir="{configs_dir}")')
+    # The list variable _sweep_input_lines references in expand() calls.
+    lines.append(f"{_list_var(case)} = space.cases")
+
+    blocks = ["\n".join(lines)]
+
+    ordered = sorted(design.rules, key=lambda spec: bool(spec.output))
+    for spec in ordered:
+        aggregate = not spec.output
+        rule = spec.as_rule(configs_dir=configs_dir, case_wildcard=case)
+        rule_lines = [f"rule {rule.name}:"]
+        if rule.input:
+            rule_lines.append("    input:")
+            rule_lines.extend(_sweep_input_lines(rule, [case], aggregate))
+        if rule.output:
+            rule_lines.append("    output:")
+            rule_lines.extend(_string_lines(rule.output))
+        if rule.shell:
+            rule_lines.append("    shell:")
+            rule_lines.append(f'        "{rule.shell}"')
+        blocks.append("\n".join(rule_lines))
+
+    return "\n\n".join(blocks) + "\n"
+
+
+@dataclass
+class SweepExport:
+    """The files written by :func:`export_sweep`."""
+
+    sweep_csv: Path
+    params_yaml: Path
+    snakefile: Path
+    configs: List[Path]
+
+
+def export_sweep(
+    widget: NodeFlowWidget,
+    registry: RuleRegistry,
+    out_dir: Union[str, Path],
+    *,
+    combinations: Optional[List[Dict[str, str]]] = None,
+    materialize: bool = True,
+) -> SweepExport:
+    """Write the runnable workflow directory for the current canvas.
+
+    Extracts the sweep design (:func:`flow_to_sweep`) and writes ``sweep.csv``,
+    ``params.yaml``, and the ``Snakefile`` into ``out_dir``; with
+    ``materialize=True`` the per-case configs are also written so the directory
+    is immediately runnable with ``snakemake``.
+    """
+    from .snakemake_paramspace import (
+        YamlParamSpace,
+        write_params_yaml,
+        write_sweep_csv,
+    )
+
+    design = flow_to_sweep(widget, registry, combinations=combinations)
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    sweep_path = out / "sweep.csv"
+    params_path = out / "params.yaml"
+    snakefile_path = out / "Snakefile"
+
+    write_sweep_csv(sweep_path, design.combinations, case_col=registry.case_wildcard)
+    write_params_yaml(params_path, design.blocks)
+    snakefile_path.write_text(paramspace_snakefile(registry, design))
+
+    configs: List[Path] = []
+    if materialize:
+        used_models = {
+            dim: model
+            for spec in design.rules
+            for dim, model in spec.params_models.items()
+        }
+        space = YamlParamSpace(
+            sweep_path, params_path, models=used_models,
+            case_col=registry.case_wildcard,
+        )
+        configs = space.materialize(_rule_dims_of(design), out_dir=out / "configs")
+
+    return SweepExport(
+        sweep_csv=sweep_path,
+        params_yaml=params_path,
+        snakefile=snakefile_path,
+        configs=configs,
     )

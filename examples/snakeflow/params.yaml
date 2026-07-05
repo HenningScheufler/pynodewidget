@@ -1,0 +1,30 @@
+material:
+  air:
+    density: 1.2
+    viscosity: 1.8e-05
+  oil:
+    density: 900.0
+    viscosity: 0.05
+  water:
+    density: 1000.0
+    viscosity: 0.001
+mesh:
+  coarse:
+    nx: 50
+    ny: 50
+  fine:
+    nx: 200
+    ny: 200
+  medium:
+    nx: 100
+    ny: 100
+solver:
+  balanced:
+    scheme: implicit
+    tol: 1.0e-06
+  exact:
+    scheme: implicit
+    tol: 1.0e-09
+  fast:
+    scheme: explicit
+    tol: 0.001

@@ -40,3 +40,9 @@ Thumbs.db
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+
+# generated snakeflow example artifacts
+examples/snakeflow/*.html
+examples/snakeflow/dag.dot
+examples/snakeflow/results/
+examples/snakeflow/.snakemake/

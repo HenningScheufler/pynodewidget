@@ -1,0 +1,27 @@
+from pynodewidget.snakemake_paramspace import YamlParamSpace
+from models import MaterialCfg, MeshCfg, SolverCfg
+
+space = YamlParamSpace("sweep.csv", "params.yaml", models={"material": MaterialCfg, "mesh": MeshCfg, "solver": SolverCfg})
+space.materialize({'simulate': ['material', 'mesh', 'solver'], 'post': ['solver']}, out_dir="configs")
+cases = space.cases
+
+rule all:
+    input:
+        expand("results/{case}/report.txt", case=cases)
+
+rule simulate:
+    input:
+        "configs/{case}/simulate.json"
+    output:
+        "results/{case}/out.dat"
+    shell:
+        "cp {input[0]} {output}"
+
+rule post:
+    input:
+        "configs/{case}/post.json",
+        "results/{case}/out.dat"
+    output:
+        "results/{case}/report.txt"
+    shell:
+        "cat {input} > {output}"

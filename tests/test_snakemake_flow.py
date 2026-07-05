@@ -7,10 +7,19 @@ import pytest
 from pynodewidget.snakemake_flow import (
     ParamSource,
     Rule,
+    RuleRegistry,
+    RuleSpec,
+    autowire,
+    build_pattern_edges,
     data_type_of,
     dot_to_flow,
+    export_sweep,
+    flow_to_sweep,
     parse_dot,
     parse_snakefile,
+    paramspace_snakefile,
+    registry_to_flow,
+    sources_from_params_yaml,
     rules_to_flow,
     rules_to_snakefile,
     sweep_to_flow,
@@ -323,6 +332,430 @@ def test_sweep_to_flow_source_and_param_ports():
     # The file dependency simulate -> all is still present.
     file_edges = [e for e in flow.edges if e["source"] == "simulate"]
     assert file_edges and file_edges[0]["target"] == "all"
+
+
+# A 2-parameter grid sweep: {sample} x {method}.
+GRID_SOURCES = [
+    ParamSource("sample", ["A", "B", "C"]),
+    ParamSource("method", ["fast", "slow"]),
+]
+GRID_RULES = [
+    Rule("all", input=["results/{sample}_{method}.txt"]),
+    Rule("simulate", input=["data/{sample}.in"], output=["sim/{sample}.raw"],
+         shell="simulate {input} {output}"),
+    Rule("analyze", input=["sim/{sample}.raw"],
+         output=["results/{sample}_{method}.txt"],
+         shell="analyze --method {wildcards.method} {input} {output}"),
+]
+
+
+def test_multi_wildcard_expand():
+    """An aggregator input with two wildcards expands over both sweeps."""
+    text = sweep_to_snakefile(GRID_SOURCES, GRID_RULES)
+
+    assert 'samples = ["A", "B", "C"]' in text
+    assert 'methods = ["fast", "slow"]' in text
+    assert (
+        'expand("results/{sample}_{method}.txt", sample=samples, method=methods)'
+        in text
+    )
+    # simulate only uses {sample}, so its input is not expanded.
+    assert '        "data/{sample}.in"' in text
+
+
+def test_multi_param_rule_ports_and_edges():
+    """A rule using two wildcards gets both param ports; sources only feed the
+    rules that use their wildcard."""
+    flow = sweep_to_flow(GRID_SOURCES, GRID_RULES)
+
+    analyze = next(t for t in flow.node_templates if t["type"] == "rule_analyze")
+    ids = {h["id"] for h in _handles(analyze)}
+    assert {"param:sample", "param:method"} <= ids
+
+    # 'method' feeds analyze + all (which use {method}); not simulate.
+    method_targets = {e["target"] for e in flow.edges if e["source"] == "src_method"}
+    assert method_targets == {"analyze", "all"}
+    sample_targets = {e["target"] for e in flow.edges if e["source"] == "src_sample"}
+    assert sample_targets == {"simulate", "analyze", "all"}
+
+
+def test_generated_grid_sweep_dag_expands(tmp_path):
+    """snakemake --dag expands the grid into 3 simulate + 6 analyze jobs."""
+    import subprocess
+
+    cli = _snakemake_cli()
+    (tmp_path / "Snakefile").write_text(sweep_to_snakefile(GRID_SOURCES, GRID_RULES))
+    data = tmp_path / "data"
+    data.mkdir()
+    for s in ("A", "B", "C"):
+        (data / f"{s}.in").touch()
+
+    result = subprocess.run(
+        [cli, "--dag"], cwd=tmp_path, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count('label = "simulate') == 3
+    assert result.stdout.count('label = "analyze') == 6
+
+
+# ---------------------------------------------------------------------------
+# Rule registry, auto-wiring, and the canvas -> workflow-directory round trip
+# ---------------------------------------------------------------------------
+
+from pydantic import BaseModel
+
+
+class MeshCfg(BaseModel):
+    nx: int = 100
+    ny: int = 100
+
+
+class SolverCfg(BaseModel):
+    tol: float = 1e-6
+    scheme: str = "implicit"
+
+
+MODELS_PY = '''\
+from pydantic import BaseModel
+
+
+class MeshCfg(BaseModel):
+    nx: int = 100
+    ny: int = 100
+
+
+class SolverCfg(BaseModel):
+    tol: float = 1e-6
+    scheme: str = "implicit"
+'''
+
+
+def _registry() -> RuleRegistry:
+    reg = RuleRegistry(models_module="models")
+    reg.add(RuleSpec(
+        "simulate",
+        output=["results/{case}/out.dat"],
+        shell="cat {input[0]} > {output}",
+        params_models={"mesh": MeshCfg, "solver": SolverCfg},
+    ))
+    reg.add(RuleSpec(
+        "post",
+        input=["results/{case}/out.dat"],
+        output=["results/{case}/report.txt"],
+        shell="cat {input} > {output}",
+        params_models={"solver": SolverCfg},
+    ))
+    reg.add(RuleSpec("all", input=["results/{case}/report.txt"]))
+    return reg
+
+
+def _canvas(registry: RuleRegistry):
+    """A widget with palette + hand-placed nodes shaped like frontend adds.
+
+    One grouped source node per dimension; the solver source holds two named
+    blocks (its entry group is a view into the params.yaml 'solver' section).
+    """
+    widget = registry_to_flow(registry)
+    pos = {"x": 0, "y": 0}
+    widget.nodes = {
+        "node-1": {"type": "rule_simulate", "position": pos, "data": {}},
+        "node-2": {"type": "rule_post", "position": pos, "data": {}},
+        "node-3": {"type": "rule_all", "position": pos, "data": {}},
+        "node-4": {"type": "block_mesh", "position": pos, "data": {}},
+        "node-5": {"type": "block_solver", "position": pos, "data": {}},
+    }
+    widget.node_values = {
+        "node-4": {"entries": {
+            "selected": "fine",
+            "entries": {"fine": {"nx": 200, "ny": 200}},
+        }},
+        "node-5": {"entries": {
+            "selected": "fast",
+            "entries": {
+                "fast": {"tol": 1e-3, "scheme": "explicit"},
+                "exact": {"tol": 1e-9, "scheme": "implicit"},
+            },
+        }},
+    }
+    return widget
+
+
+def test_registry_templates():
+    """One template per rule plus one schema-driven template per dimension."""
+    flow = registry_to_flow(_registry())
+    templates = {t["type"]: t for t in flow.node_templates}
+    assert set(templates) == {
+        "rule_simulate", "rule_post", "rule_all", "block_mesh", "block_solver",
+    }
+
+    # The source template holds an entry group whose fields come from the
+    # pydantic model; the default is one entry named after the dimension.
+    mesh = templates["block_mesh"]
+    assert mesh["defaultValues"] == {
+        "entries": {"selected": "mesh", "entries": {"mesh": {"nx": 100, "ny": 100}}}
+    }
+    group = next(
+        comp
+        for cell in mesh["definition"]["grid"]["cells"]
+        for comp in cell.get("components", [])
+        if comp.get("type") == "entry-group"
+    )
+    assert {f["id"] for f in group["fields"]} == {"nx", "ny"}
+    out = [h for h in _handles(mesh) if h["handle_type"] == "output"]
+    assert [h["dataType"] for h in out] == ["cfg:mesh"]
+
+    # The rule template has a required config port per dimension + file ports.
+    sim = templates["rule_simulate"]
+    inputs = [h for h in _handles(sim) if h["handle_type"] == "input"]
+    assert {h["id"] for h in inputs} == {"cfg:mesh", "cfg:solver"}
+    assert all(h["required"] for h in inputs)
+    outputs = [h for h in _handles(sim) if h["handle_type"] == "output"]
+    assert [h["id"] for h in outputs] == ["out:results/{case}/out.dat"]
+
+
+def test_registry_rejects_duplicates_and_conflicts():
+    reg = _registry()
+    with pytest.raises(ValueError, match="already registered"):
+        reg.add(RuleSpec("simulate"))
+
+    class OtherCfg(BaseModel):
+        x: int = 0
+
+    reg.add(RuleSpec("clash", params_models={"mesh": OtherCfg}))
+    with pytest.raises(ValueError, match="conflicting models"):
+        reg.dims()
+
+
+def test_build_pattern_edges_unifies_wildcard_names():
+    """Patterns match positionally regardless of wildcard names."""
+    rules = [
+        Rule("produce", output=["results/{case}/out.dat"]),
+        Rule("consume", input=["results/{c}/out.dat"]),
+        Rule("other", input=["results/{case}/other.dat"]),
+    ]
+    edges = build_pattern_edges(rules)
+    assert len(edges) == 1
+    edge = edges[0]
+    assert (edge["source"], edge["target"]) == ("produce", "consume")
+    # Each side keeps its own raw pattern in the handle id.
+    assert edge["sourceHandle"] == "out:results/{case}/out.dat"
+    assert edge["targetHandle"] == "in:results/{c}/out.dat"
+
+
+def test_autowire_files_and_configs():
+    """autowire connects file patterns and block -> rule config ports."""
+    registry = _registry()
+    widget = _canvas(registry)
+    edges = autowire(widget, registry)
+
+    pairs = {(e["source"], e["target"], e["targetHandle"]) for e in edges}
+    # File chain simulate -> post -> all.
+    assert ("node-1", "node-2", "in:results/{case}/out.dat") in pairs
+    assert ("node-2", "node-3", "in:results/{case}/report.txt") in pairs
+    # mesh feeds simulate only; the solver source feeds simulate and post.
+    assert ("node-4", "node-1", "cfg:mesh") in pairs
+    assert ("node-4", "node-2", "cfg:mesh") not in pairs
+    assert ("node-5", "node-1", "cfg:solver") in pairs
+    assert ("node-5", "node-2", "cfg:solver") in pairs
+    assert widget.edges == edges
+
+
+def test_flow_to_sweep_blocks_and_combinations():
+    """Block values validate against the models; combinations cross-product."""
+    registry = _registry()
+    widget = _canvas(registry)
+    design = flow_to_sweep(widget, registry)
+
+    assert [spec.name for spec in design.rules] == ["simulate", "post", "all"]
+    assert design.blocks["mesh"]["fine"] == {"nx": 200, "ny": 200}
+    assert design.blocks["solver"]["fast"] == {"tol": 1e-3, "scheme": "explicit"}
+
+    assert design.combinations == [
+        {"case": "fine_exact", "mesh": "fine", "solver": "exact"},
+        {"case": "fine_fast", "mesh": "fine", "solver": "fast"},
+    ]
+
+
+def test_flow_to_sweep_validation_errors():
+    registry = _registry()
+    widget = _canvas(registry)
+
+    widget.node_values["node-4"] = {
+        "entries": {"selected": "fine", "entries": {"fine": {"nx": "oops"}}}
+    }
+    with pytest.raises(ValueError, match="'mesh.fine' failed validation"):
+        flow_to_sweep(widget, registry)
+
+    widget.node_values["node-4"] = {
+        "entries": {"selected": "", "entries": {"": {"nx": 1, "ny": 1}}}
+    }
+    with pytest.raises(ValueError, match="block name must not be empty"):
+        flow_to_sweep(widget, registry)
+
+    widget.node_values["node-4"] = {"entries": {"selected": "", "entries": {}}}
+    with pytest.raises(ValueError, match="no parameter blocks defined"):
+        flow_to_sweep(widget, registry)
+
+    # A block name repeated across two source nodes of one dim is an error.
+    widget.node_values["node-4"] = {
+        "entries": {"selected": "fine", "entries": {"fine": {"nx": 1, "ny": 1}}}
+    }
+    nodes = dict(widget.nodes)
+    nodes["node-6"] = {"type": "block_mesh", "position": {"x": 0, "y": 0}, "data": {}}
+    widget.nodes = nodes
+    widget.node_values["node-6"] = {
+        "entries": {"selected": "fine", "entries": {"fine": {"nx": 2, "ny": 2}}}
+    }
+    with pytest.raises(ValueError, match="duplicate block name 'fine'"):
+        flow_to_sweep(widget, registry)
+
+    # A rule whose dimension has no block on the canvas is an error.
+    nodes = dict(widget.nodes)
+    del nodes["node-4"], nodes["node-6"]
+    widget.nodes = nodes
+    with pytest.raises(ValueError, match="no 'mesh' parameter block"):
+        flow_to_sweep(widget, registry)
+
+
+def test_sources_from_params_yaml_round_trip(tmp_path):
+    """params.yaml exported from one canvas seeds another, yielding the same
+    blocks — the source nodes are a real view into the file."""
+    pytest.importorskip("yaml")
+    registry = _registry()
+    widget = _canvas(registry)
+    design = flow_to_sweep(widget, registry)
+    export_sweep(widget, registry, tmp_path)
+
+    fresh = registry_to_flow(registry)
+    node_ids = sources_from_params_yaml(fresh, registry, tmp_path / "params.yaml")
+    assert set(node_ids) == {"mesh", "solver"}
+    assert fresh.nodes[node_ids["solver"]]["type"] == "block_solver"
+    solver_group = fresh.node_values[node_ids["solver"]]["entries"]
+    assert set(solver_group["entries"]) == {"fast", "exact"}
+
+    # Add the rule nodes back; the extracted design matches the original.
+    pos = {"x": 0, "y": 0}
+    fresh.nodes = {
+        **fresh.nodes,
+        "r1": {"type": "rule_simulate", "position": pos, "data": {}},
+        "r2": {"type": "rule_post", "position": pos, "data": {}},
+        "r3": {"type": "rule_all", "position": pos, "data": {}},
+    }
+    assert flow_to_sweep(fresh, registry).blocks == design.blocks
+
+
+def test_sources_from_params_yaml_errors(tmp_path):
+    pytest.importorskip("yaml")
+    from pynodewidget.snakemake_paramspace import write_params_yaml
+
+    registry = _registry()
+
+    write_params_yaml(tmp_path / "bad_dim.yaml", {"unknown": {"a": {}}})
+    with pytest.raises(ValueError, match="unknown dimension 'unknown'"):
+        sources_from_params_yaml(registry_to_flow(registry), registry,
+                                 tmp_path / "bad_dim.yaml")
+
+    write_params_yaml(tmp_path / "bad_val.yaml",
+                      {"mesh": {"fine": {"nx": "oops"}}})
+    with pytest.raises(ValueError, match="'mesh.fine' failed validation"):
+        sources_from_params_yaml(registry_to_flow(registry), registry,
+                                 tmp_path / "bad_val.yaml")
+
+
+def test_paramspace_snakefile_shape():
+    """The generated Snakefile wires YamlParamSpace, configs, and expand()."""
+    registry = _registry()
+    widget = _canvas(registry)
+    text = paramspace_snakefile(registry, flow_to_sweep(widget, registry))
+
+    assert "from pynodewidget.snakemake_paramspace import YamlParamSpace" in text
+    assert "from models import MeshCfg, SolverCfg" in text
+    assert '"mesh": MeshCfg' in text and '"solver": SolverCfg' in text
+    assert "space.materialize(" in text
+    assert "cases = space.cases" in text
+    # The aggregator comes first (default target) and expands over the cases.
+    assert text.index("rule all:") < text.index("rule simulate:")
+    assert 'expand("results/{case}/report.txt", case=cases)' in text
+    # Parametrized rules read their materialized config as first input.
+    assert '"configs/{case}/simulate.json"' in text
+    assert '"configs/{case}/post.json"' in text
+
+
+def test_export_sweep_writes_runnable_directory(tmp_path):
+    pytest.importorskip("yaml")
+    registry = _registry()
+    widget = _canvas(registry)
+    autowire(widget, registry)
+
+    export = export_sweep(widget, registry, tmp_path)
+
+    assert export.sweep_csv.read_text().splitlines() == [
+        "case,mesh,solver",
+        "fine_exact,fine,exact",
+        "fine_fast,fine,fast",
+    ]
+    import yaml
+    blocks = yaml.safe_load(export.params_yaml.read_text())
+    assert blocks["solver"]["exact"]["tol"] == 1e-9
+    assert "rule simulate:" in export.snakefile.read_text()
+    # Materialized configs hold only each rule's own dimensions.
+    import json
+    post_cfg = json.loads((tmp_path / "configs/fine_fast/post.json").read_text())
+    assert set(post_cfg) == {"solver"}
+    assert len(export.configs) == 4  # 2 cases x 2 parametrized rules
+
+
+def test_exported_sweep_runs_under_snakemake(tmp_path):
+    """End to end: canvas -> export -> snakemake run -> selective re-run.
+
+    Optional: skipped unless the snakemake extra is installed.
+    """
+    import json
+    import os
+    import subprocess
+
+    pytest.importorskip("yaml")
+    cli = _snakemake_cli()
+
+    registry = _registry()
+    widget = _canvas(registry)
+    autowire(widget, registry)
+    export_sweep(widget, registry, tmp_path)
+    (tmp_path / "models.py").write_text(MODELS_PY)
+
+    env = {**os.environ, "PYTHONPATH": str(tmp_path)}
+
+    def run(*args):
+        return subprocess.run(
+            [cli, *args], cwd=tmp_path, env=env, capture_output=True, text=True
+        )
+
+    # Dry run schedules one simulate + post per case plus the aggregator.
+    result = run("-n")
+    assert result.returncode == 0, result.stderr
+    dag = result.stdout + result.stderr
+    for case in ("fine_fast", "fine_exact"):
+        assert f"wildcards: case={case}" in dag
+
+    result = run("-c1")
+    assert result.returncode == 0, result.stderr
+    report = tmp_path / "results" / "fine_fast" / "report.txt"
+    assert report.exists()
+    # The report is the concatenated simulate config + output chain.
+    assert json.loads((tmp_path / "configs/fine_fast/simulate.json").read_text())
+
+    # Editing one solver block re-materializes at parse time and re-runs only
+    # the affected case.
+    from pynodewidget.snakemake_paramspace import read_params_yaml, write_params_yaml
+    blocks = read_params_yaml(tmp_path / "params.yaml")
+    blocks["solver"]["fast"]["tol"] = 5e-4
+    write_params_yaml(tmp_path / "params.yaml", blocks)
+
+    result = run("-n")
+    assert result.returncode == 0, result.stderr
+    dag = result.stdout + result.stderr
+    assert "wildcards: case=fine_fast" in dag
+    assert "wildcards: case=fine_exact" not in dag
 
 
 def _header(template: dict) -> dict:
