@@ -17,11 +17,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    emptyOutDir: false,  // Don't clear dist since we're building multiple times
     lib: {
       entry: path.resolve(__dirname, 'src/standalone_entry.tsx'),
       name: 'PyNodeWidget',
       formats: ['iife'],
       fileName: () => 'standalone.iife.js',
+      // widget.py's export_html expects static/standalone.css; without this
+      // the CSS asset is named after the package (pynodewidget-js.css).
+      cssFileName: 'standalone',
     },
     rollupOptions: {
       output: {

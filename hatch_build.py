@@ -34,6 +34,12 @@ class BunBuildHook(BuildHookInterface):
             check=True,
         )
 
+        # Start from a clean dist: the vite configs share the directory with
+        # emptyOutDir disabled, so stale artifacts from earlier builds would
+        # otherwise be copied into the package.
+        if dist_dir.exists():
+            shutil.rmtree(dist_dir)
+
         # Run bun build
         print("Building JavaScript assets with bun...")
         subprocess.run(
@@ -45,22 +51,35 @@ class BunBuildHook(BuildHookInterface):
         # Run bun build for standalone bundle
         print("Building standalone IIFE bundle with bun...")
         subprocess.run(
-            ["bun", "run", "vite", "build", "--config", "vite.config.standalone.ts"],
+            ["bun", "run", "build:standalone"],
             cwd=js_dir,
             check=True,
         )
 
+        # The widget and its HTML export load these exact files; fail the
+        # build early if a config change breaks the expected names.
+        required = [
+            "index.js",
+            "index.css",
+            "json_schema_node_entry.js",
+            "standalone.iife.js",
+            "standalone.css",
+        ]
+        missing = [name for name in required if not (dist_dir / name).exists()]
+        if missing:
+            raise RuntimeError(
+                f"JavaScript build did not produce expected files: {missing}"
+            )
+
         # Create static directory if it doesn't exist
         static_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy built assets (all JS and CSS files to handle code splitting)
+        # Copy built assets (JS, CSS, and sourcemaps so shipped maps match
+        # the shipped bundles)
         print("Copying built assets to package...")
-        for file in dist_dir.glob("*.js"):
-            shutil.copy2(file, static_dir / file.name)
-            print(f"  Copied {file.name}")
-        
-        for file in dist_dir.glob("*.css"):
-            shutil.copy2(file, static_dir / file.name)
-            print(f"  Copied {file.name}")
+        for pattern in ("*.js", "*.css", "*.js.map"):
+            for file in dist_dir.glob(pattern):
+                shutil.copy2(file, static_dir / file.name)
+                print(f"  Copied {file.name}")
 
         print("JavaScript build complete!")
